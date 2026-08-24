@@ -1,0 +1,26 @@
+name: Manual branch preview documentation site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs-pages-manual-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-docs:
+    uses: Algites-EU/pub.gov.Algites/.github/workflows/algites-universal-docs-site.yml@main
+    with:
+      gradle-task: generateAlgitesDocsSite
+      java-version: "21"
+      publication-kind: preview
+      publication-id: ${{ github.ref_name }}
+      documentation-branch: documentation
+      publication-target: ""
+      gradle-arguments: "--warning-mode all"
+      publish-pages: true

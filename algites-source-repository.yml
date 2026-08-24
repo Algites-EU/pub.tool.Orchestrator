@@ -1,0 +1,10 @@
+sourceRepository:
+  id: pub.tpl.Basic (to be changed)
+  name: Algites public (to be specified) repository
+
+versionContext:
+  releaseLine: "1"
+  revision: 0
+  qualifierKind: SNAPSHOT
+  qualifierLabel: SNAPSHOT
+  

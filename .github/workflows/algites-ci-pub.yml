@@ -1,0 +1,14 @@
+name: Algites CI (Public)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  
+jobs:
+  ci:
+    uses: Algites-EU/pub.gov.Algites/.github/workflows/algites-universal-github-pub-devops-ci-pub.wrapper.yml@main
+    secrets: inherit

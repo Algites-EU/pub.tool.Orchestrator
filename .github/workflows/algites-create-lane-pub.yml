@@ -1,0 +1,37 @@
+# .github/workflows/algites-create-lane.yml
+name: Algites Create Lane (Public)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_lane:
+        description: "Source lane (e.g. 1.1.x)"
+        required: true
+      new_lane:
+        description: "New lane (e.g. 1.2.x)"
+        required: true
+      variants:
+        description: "auto (discover) or explicit"
+        required: false
+        default: "auto"
+      variants_explicit:
+        description: "Comma-separated variants when variants=explicit (e.g. jvm17,and21)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  create-lane:
+    uses: Algites-EU/pub.gov.Algites/.github/workflows/algites-universal-github-create-lane-pub.wrapper.yml@main
+    with:
+      source_lane: ${{ inputs.source_lane }}
+      new_lane: ${{ inputs.new_lane }}
+      variants: ${{ inputs.variants }}
+      variants_explicit: ${{ inputs.variants_explicit }}
+    secrets:
+      PUB_GITHUB_APP_ID: ${{ secrets.PUB_GITHUB_APP_ID }}
+      PUB_GITHUB_APP_INSTALLATION_ID: ${{ secrets.PUB_GITHUB_APP_INSTALLATION_ID }}
+      PUB_GITHUB_APP_PEM: ${{ secrets.PUB_GITHUB_APP_PEM }}

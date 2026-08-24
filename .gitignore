@@ -1,0 +1,13 @@
+#IDEA:
+**/*.iml
+
+# Gradle
+.gradle/
+**/.gradle/
+
+# Documentation
+docs-site/
+
+# Build outputs (u vás do run/)
+run/*
+**/run/*
