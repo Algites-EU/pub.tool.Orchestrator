@@ -1,0 +1,119 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://algites.eu/orchestrator/deployment/model/v1/shared-mountable-resource-configuration.schema.yml"
+title: "Algites Orchestrator SharedMountableResourceConfiguration"
+description: >
+  Defines one independently-lived mountable resource whose backing is intentionally
+  shared by multiple guest deployments. The resource has its own infrastructure
+  lifecycle and is therefore not defined or owned by any one guest deployment.
+  Guest-specific access (RO or RW), mount point, purpose and sharing requirement
+  remain in GuestConfiguration. This configuration defines the shared backing and
+  how the deployment infrastructure realizes and exposes it.
+
+type: object
+additionalProperties: false
+required:
+  - model_version
+  - shared_mountable_resource
+  - storage_class
+  - representation
+  - host
+  - host_storage_target
+properties:
+
+  model_version:
+    const: 1
+    description: >
+      Version of the Algites Orchestrator deployment model. During initial model
+      development this value remains 1 rather than changing with draft revisions.
+
+  shared_mountable_resource:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - description
+    properties:
+      id:
+        $ref: "common.schema.yml#/$defs/Identifier"
+        description: >
+          Stable identity used by GuestDeploymentConfiguration to bind a guest's
+          SHARED MountableResource to this concrete shared backing resource.
+      description:
+        $ref: "common.schema.yml#/$defs/Description"
+
+  storage_class:
+    $ref: "common.schema.yml#/$defs/MountableResourceStorageClass"
+    description: >
+      Storage class provided by this shared backing. Every guest resource bound
+      to it must request a compatible storage class.
+
+  representation:
+    $ref: "common.schema.yml#/$defs/MountableResourceRepresentation"
+    description: >
+      Representation provided by this shared backing. Every guest resource bound
+      to it must request the same representation.
+
+  host:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: >
+      Deployment host responsible for realizing and exposing this resource. The
+      identifier refers to a HostConfiguration. This lifecycle host is distinct
+      from external StorageSystem hosts/appliances represented in the environment.
+
+  host_storage_target:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: >
+      HostStorageTarget on the realization host that provides the requested
+      storage class and representation.
+
+  size:
+    $ref: "common.schema.yml#/$defs/DataSize"
+    description: >
+      Optional concrete logical capacity when the backing implementation has an
+      explicitly provisioned size. Directory-backed filesystems may omit it when
+      capacity is inherited from the underlying filesystem and no quota is modeled.
+
+  backend:
+    $ref: "common.schema.yml#/$defs/MountableResourceBackendType"
+    description: >
+      Optional explicit host-side backend selection. If omitted, the resolver
+      chooses a backend supported by host_storage_target for the representation.
+
+  host_mountable_resource_interface:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: >
+      Optional named FILESYSTEM provider from the realization HostConfiguration.
+      If omitted for FILESYSTEM representation, the resolver may use the host's
+      default provider for consumers. This property is invalid for BLOCK.
+
+allOf:
+  - if:
+      properties:
+        representation:
+          const: BLOCK
+      required:
+        - representation
+    then:
+      not:
+        required:
+          - host_mountable_resource_interface
+      properties:
+        backend:
+          oneOf:
+            - const: QCOW2
+              description: QEMU Copy-On-Write image backing for a shared block resource.
+            - const: RAW_FILE
+              description: Raw image-file backing for a shared block resource.
+            - const: LVM
+              description: LVM logical-volume backing for a shared block resource.
+  - if:
+      properties:
+        representation:
+          const: FILESYSTEM
+      required:
+        - representation
+    then:
+      properties:
+        backend:
+          const: DIRECTORY
+          description: Host directory backing for a shared filesystem resource.

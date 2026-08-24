@@ -1,0 +1,150 @@
+model_version: 1
+
+guest:
+  id: example-guest
+  description: >
+    Feature-rich demonstration NixOS guest showing disposable system storage,
+    multiple persistent block resources, archive data, local/off-site backup,
+    shared Nix/Gradle caches and multiple logical network interfaces.
+
+os:
+  description: >
+    NixOS configuration is owned by the adjacent nixos/ tree. Packages and
+    services belong in Nix rather than being duplicated in this YAML model.
+  type: NIXOS
+  configuration_path: nixos/
+
+compute:
+  description: Compute constraints and defaults of the example guest.
+  cpu:
+    minimum: 1
+    default: 2
+  memory:
+    minimum: 512MiB
+    default: 2GiB
+
+network_interfaces:
+  description: Logical adapters required or accepted by the guest.
+  items:
+    primary:
+      description: Primary application/network adapter.
+      required: true
+    management:
+      description: Optional separate management adapter.
+      required: false
+
+mountable_resources:
+  description: All filesystems that the guest expects to mount.
+  items:
+    system-root:
+      description: Reproducible guest root filesystem.
+      storage_class: DISPOSABLE
+      purpose: SYSTEM
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /
+      capacity:
+        minimum: 4GiB
+        default: 16GiB
+
+    application-data:
+      description: Primary persistent application data.
+      storage_class: PERSISTENT
+      purpose: DATA
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/data
+      capacity:
+        minimum: 1GiB
+        default: 20GiB
+
+    transaction-log:
+      description: >
+        Separate persistent transaction/log data whose I/O should preferably
+        use devices and controllers independent from application-data.
+      storage_class: PERSISTENT
+      purpose: DATA
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/transaction-log
+      capacity:
+        minimum: 256MiB
+        default: 4GiB
+
+    archive-media:
+      description: Large lower-performance media/archive data.
+      storage_class: ARCHIVE
+      purpose: DATA
+      representation: FILESYSTEM
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/archive/media
+
+    local-backup:
+      description: >
+        Local backup filesystem that must be independent from primary data at
+        storage-system and backing-host level while it may remain at the same site.
+      storage_class: ARCHIVE
+      purpose: BACKUP
+      representation: FILESYSTEM
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/backup/local
+
+    offsite-backup:
+      description: >
+        Off-site backup filesystem whose backing must not share primary data's
+        storage system, host or site.
+      storage_class: ARCHIVE
+      purpose: BACKUP
+      representation: FILESYSTEM
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/backup/offsite
+
+    nix-cache:
+      description: >
+        Shared read-only Nix cache filesystem consumed by this guest. The same
+        backing is populated RW by example-cache-provider.
+      storage_class: PERSISTENT
+      purpose: CACHE
+      representation: FILESYSTEM
+      access: RO
+      sharing: SHARED
+      mount_point: /storage/cache/nix
+
+    gradle-cache:
+      description: >
+        Shared read-only Gradle dependency cache. Its backing is intentionally
+        disposable because it can be rebuilt.
+      storage_class: DISPOSABLE
+      purpose: CACHE
+      representation: FILESYSTEM
+      access: RO
+      sharing: SHARED
+      mount_point: /storage/cache/gradle
+
+  relations:
+    - description: >
+        Prefer independent devices and controllers for primary application data
+        and transaction-log to reduce shared I/O bottlenecks.
+      mountable_resources: [application-data, transaction-log]
+      relations: [NO_SHARED_DEVICE, NO_SHARED_CONTROLLER]
+      requirement: PREFERRED
+
+    - description: >
+        Local backup must use a different storage system and backing host than
+        primary application data.
+      mountable_resources: [application-data, local-backup]
+      relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST]
+      requirement: REQUIRED
+
+    - description: >
+        Off-site backup must be independent from primary data at storage-system,
+        backing-host and site levels.
+      mountable_resources: [application-data, offsite-backup]
+      relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST, NO_SHARED_SITE]
+      requirement: REQUIRED

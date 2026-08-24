@@ -1,0 +1,64 @@
+model_version: 1
+
+guest:
+  id: example-cache-provider
+  description: >
+    NixOS infrastructure-service guest with RW access to shared Nix and Gradle
+    cache filesystems. It demonstrates that access is per guest/resource
+    relationship rather than a property of the shared backing itself.
+
+os:
+  description: NixOS configuration for the cache-populating infrastructure guest.
+  type: NIXOS
+  configuration_path: nixos/
+
+compute:
+  description: Minimal compute requirements for the cache provider.
+  cpu:
+    minimum: 1
+    default: 2
+  memory:
+    minimum: 512MiB
+    default: 1GiB
+
+network_interfaces:
+  description: Network interfaces used by the cache provider.
+  items:
+    primary:
+      description: Primary adapter used for package/download access and management.
+      required: true
+
+mountable_resources:
+  description: Shared cache filesystems populated by this guest.
+  items:
+    system-root:
+      description: Reproducible root filesystem of the cache provider.
+      storage_class: DISPOSABLE
+      purpose: SYSTEM
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /
+      capacity:
+        minimum: 4GiB
+        default: 12GiB
+
+    nix-cache:
+      description: Shared persistent Nix cache filesystem populated by this guest.
+      storage_class: PERSISTENT
+      purpose: CACHE
+      representation: FILESYSTEM
+      access: RW
+      sharing: SHARED
+      mount_point: /storage/cache/nix
+
+    gradle-cache:
+      description: Shared disposable Gradle cache filesystem populated by this guest.
+      storage_class: DISPOSABLE
+      purpose: CACHE
+      representation: FILESYSTEM
+      access: RW
+      sharing: SHARED
+      mount_point: /storage/cache/gradle
+
+  relations: []

@@ -1,0 +1,163 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://algites.eu/orchestrator/deployment/model/v1/host-configuration.schema.yml"
+title: "Algites Orchestrator HostConfiguration"
+description: >
+  Defines capabilities and implementation details of one deployment host:
+  local storage topology, HostStorageTargets, guest networks and filesystem
+  interface providers. Physical site and external storage-system topology are
+  resolved through DeploymentEnvironmentConfiguration.
+
+type: object
+additionalProperties: false
+required:
+  - model_version
+  - environment
+  - host
+  - storage_devices
+  - storage_controllers
+  - storage_targets
+  - networks
+  - mountable_resource_interfaces
+  - defaults
+properties:
+  model_version:
+    const: 1
+    description: Version of the Algites Orchestrator deployment model.
+  environment:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: Deployment environment used by this host.
+  host:
+    type: object
+    additionalProperties: false
+    required: [id, description]
+    properties:
+      id:
+        $ref: "common.schema.yml#/$defs/Identifier"
+        description: Host id that must exist in environment.hosts.
+      description: { $ref: "common.schema.yml#/$defs/Description" }
+  storage_devices:
+    type: object
+    description: >
+      Registry of physical and logical storage-device layers visible to this
+      host. Stable ids should be used in impacted_devices; volatile /dev/sdX
+      names should not be used as configuration identity.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description, type]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+        type: { $ref: "common.schema.yml#/$defs/HostStorageDeviceType" }
+        path:
+          type: string
+          minLength: 1
+          description: Optional stable host path or implementation name.
+  storage_controllers:
+    type: object
+    description: Registry of controller/I/O path ids referenced by impacted_controllers.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+  storage_targets:
+    type: object
+    minProperties: 1
+    description: Concrete host storage targets available to the deployment resolver.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties: { $ref: "common.schema.yml#/$defs/HostStorageTarget" }
+  networks:
+    type: object
+    description: Host/libvirt networks to which guest logical adapters may be bound.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description, bridge, mode]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+        bridge:
+          type: string
+          minLength: 1
+          description: Host bridge/libvirt network interface name.
+        mode: { $ref: "common.schema.yml#/$defs/HostNetworkMode" }
+        subnet:
+          type: string
+          minLength: 1
+          description: Optional guest subnet in CIDR notation.
+        gateway:
+          type: string
+          minLength: 1
+          description: Optional host/gateway address on the guest network.
+        ipv6_subnet:
+          type: string
+          minLength: 1
+          description: >
+            Optional IPv6 guest subnet in CIDR notation. It may be specified
+            together with subnet to define a dual-stack guest network.
+        ipv6_gateway:
+          type: string
+          minLength: 1
+          description: Optional IPv6 host/gateway address on the guest network.
+  mountable_resource_interfaces:
+    type: object
+    description: >
+      Named host-side providers capable of exposing FILESYSTEM resources. The
+      resolver selects one provider; the selected provider drives both guest
+      mount configuration and host service/firewall configuration.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [description, type, host_network, server_address]
+          properties:
+            description: { $ref: "common.schema.yml#/$defs/Description" }
+            type: { const: SAMBA, description: "SMB/CIFS filesystem provider." }
+            host_network:
+              $ref: "common.schema.yml#/$defs/Identifier"
+              description: Host network on which SMB is exposed to guests.
+            server_address:
+              type: string
+              minLength: 1
+              description: Address guests use to reach the SMB server.
+        - type: object
+          additionalProperties: false
+          required: [description, type, host_network, server_address]
+          properties:
+            description: { $ref: "common.schema.yml#/$defs/Description" }
+            type: { const: NFS, description: "NFS filesystem provider." }
+            host_network:
+              $ref: "common.schema.yml#/$defs/Identifier"
+              description: Host network on which NFS is exposed to guests.
+            server_address:
+              type: string
+              minLength: 1
+              description: Address guests use to reach the NFS server.
+        - type: object
+          additionalProperties: false
+          required: [description, type]
+          properties:
+            description: { $ref: "common.schema.yml#/$defs/Description" }
+            type:
+              const: VIRTIOFS
+              description: Local virtiofs provider; no TCP/IP network is required.
+  defaults:
+    type: object
+    additionalProperties: false
+    required: [filesystem_interface_by_guest_os]
+    properties:
+      filesystem_interface_by_guest_os:
+        type: object
+        description: >
+          Default named FILESYSTEM provider per guest OS when no hard guest
+          requirement or deployment override is supplied.
+        properties:
+          NIXOS: { $ref: "common.schema.yml#/$defs/Identifier" }
+          LINUX: { $ref: "common.schema.yml#/$defs/Identifier" }
+          WINDOWS: { $ref: "common.schema.yml#/$defs/Identifier" }
+          MACOS: { $ref: "common.schema.yml#/$defs/Identifier" }
+        additionalProperties: false

@@ -1,0 +1,38 @@
+model_version: 1
+
+deployment:
+  id: example-datacenter-guest-deployment
+  description: >
+    Demonstrates a guest on example-secondary-host with local disposable root
+    storage and external SAN-backed persistent data.
+
+guest: example-datacenter-guest
+host: example-secondary-host
+
+compute:
+  description: Concrete compute allocation.
+  cpu: 2
+  memory: 4GiB
+
+network_interfaces:
+  description: Concrete datacenter network binding.
+  items:
+    primary:
+      description: Bind the primary adapter to the routed VM network.
+      host_network: vm
+      ipv4: 10.60.0.50
+      ipv6: fd60::50
+
+mountable_resources:
+  description: Concrete datacenter storage bindings.
+  items:
+    system-root:
+      description: Local disposable root disk.
+      size: 20GiB
+      host_storage_target: local-disposable
+      backend: QCOW2
+    application-data:
+      description: Persistent application data allocated from the shared SAN.
+      size: 100GiB
+      host_storage_target: san-persistent
+      backend: LVM

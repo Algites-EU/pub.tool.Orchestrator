@@ -1,0 +1,80 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://algites.eu/orchestrator/deployment/model/v1/deployment-environment-configuration.schema.yml"
+title: "Algites Orchestrator DeploymentEnvironmentConfiguration"
+description: >
+  Defines shared physical topology that is not owned by one deployment host:
+  sites, physical hosts/appliances and explicitly modeled external storage
+  systems. Ordinary host-local storage is implicit through HOST_LOCAL_STORAGE.
+
+type: object
+additionalProperties: false
+required: [model_version, environment, sites, hosts, storage_systems]
+properties:
+  model_version:
+    const: 1
+    description: Version of the Algites Orchestrator deployment model.
+  environment:
+    type: object
+    additionalProperties: false
+    required: [id, description]
+    properties:
+      id: { $ref: "common.schema.yml#/$defs/Identifier" }
+      description: { $ref: "common.schema.yml#/$defs/Description" }
+  sites:
+    type: object
+    description: >
+      Registry of physical locations used by NO_SHARED_SITE. A site may be a
+      home, office, server room, datacenter or another physical failure boundary.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+  hosts:
+    type: object
+    description: >
+      Registry of physical hosts/appliances relevant to storage independence.
+      Some have a HostConfiguration and run guests; others may be NAS/SAN
+      appliances used only to describe backing-storage dependencies.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description, site]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+        site:
+          $ref: "common.schema.yml#/$defs/Identifier"
+          description: Site identifier containing this physical host/appliance.
+  storage_systems:
+    type: object
+    description: >
+      Registry of external or explicitly modeled storage systems. Local storage
+      of a deployment host normally uses HOST_LOCAL_STORAGE and needs no entry.
+    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: { $ref: "common.schema.yml#/$defs/Description" }
+        impacted_hosts:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: >
+            Physical host/appliance ids whose failure can make this storage
+            system unavailable. Their sites automatically affect the system.
+          items: { $ref: "common.schema.yml#/$defs/Identifier" }
+        impacted_sites:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: >
+            Additional site dependencies not fully derived from impacted_hosts.
+          items: { $ref: "common.schema.yml#/$defs/Identifier" }
+      anyOf:
+        - required: [impacted_hosts]
+        - required: [impacted_sites]

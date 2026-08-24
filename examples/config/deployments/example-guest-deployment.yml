@@ -1,0 +1,71 @@
+model_version: 1
+
+deployment:
+  id: example-guest-deployment
+  description: >
+    Main example deployment demonstrating direct storage bindings, placement
+    independence, local/off-site archive storage and independent shared resources.
+
+guest: example-guest
+host: example-host
+
+compute:
+  description: Concrete compute allocation for the example guest.
+  cpu: 4
+  memory: 8GiB
+
+network_interfaces:
+  description: Concrete logical-network bindings.
+  items:
+    primary:
+      description: Primary adapter on the general VM network.
+      host_network: vm
+      ipv4: 172.27.122.50
+      ipv6: fd27:122::50
+    management:
+      description: Optional management adapter on the isolated agents network.
+      host_network: isolated-agents
+      ipv4: 172.27.130.50
+
+mountable_resources:
+  description: Concrete mountable-resource bindings.
+  items:
+    system-root:
+      description: Disposable root disk.
+      size: 24GiB
+      host_storage_target: disposable-nvme
+      backend: QCOW2
+    application-data:
+      description: Primary application data on fast persistent NVMe storage.
+      size: 64GiB
+      host_storage_target: persistent-nvme
+      backend: LVM
+    transaction-log:
+      description: >
+        Transaction log on SATA storage to satisfy preferred device/controller separation.
+      size: 8GiB
+      host_storage_target: persistent-sata
+      backend: LVM
+    archive-media:
+      description: Archive media on the local NAS-backed archive target.
+      host_storage_target: archive-local-nas
+      backend: DIRECTORY
+      host_mountable_resource_interface: nfs-vm
+    local-backup:
+      description: >
+        Local backup on NAS; independent from local primary storage at
+        STORAGE_SYSTEM and HOST level but still at local-site.
+      host_storage_target: archive-local-nas
+      backend: DIRECTORY
+      host_mountable_resource_interface: nfs-vm
+    offsite-backup:
+      description: Remote backup on a storage system at remote-backup-site.
+      host_storage_target: archive-remote-nas
+      backend: DIRECTORY
+      host_mountable_resource_interface: nfs-vm
+    nix-cache:
+      description: Read-only attachment to the independently defined shared Nix cache.
+      shared_mountable_resource: shared-nix-cache
+    gradle-cache:
+      description: Read-only attachment to the independently defined shared Gradle cache.
+      shared_mountable_resource: shared-gradle-cache

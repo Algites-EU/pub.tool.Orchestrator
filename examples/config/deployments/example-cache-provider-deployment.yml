@@ -1,0 +1,43 @@
+model_version: 1
+
+deployment:
+  id: example-cache-provider-deployment
+  description: >
+    Deploys example-cache-provider on example-host. The guest populates shared
+    caches but does not own their infrastructure lifecycle; both cache backings
+    are defined independently in SharedMountableResourceConfiguration files.
+
+guest: example-cache-provider
+host: example-host
+
+compute:
+  description: Concrete compute allocation for the cache provider.
+  cpu: 2
+  memory: 2GiB
+
+network_interfaces:
+  description: Concrete network bindings.
+  items:
+    primary:
+      description: Bind cache provider to the general VM network.
+      host_network: vm
+      ipv4: 172.27.122.40
+
+mountable_resources:
+  description: Concrete mountable-resource bindings.
+  items:
+    system-root:
+      description: Disposable cache-provider root disk.
+      size: 16GiB
+      host_storage_target: disposable-nvme
+      backend: QCOW2
+
+    nix-cache:
+      description: >
+        RW attachment to the independently defined persistent shared Nix cache.
+      shared_mountable_resource: shared-nix-cache
+
+    gradle-cache:
+      description: >
+        RW attachment to the independently defined disposable shared Gradle cache.
+      shared_mountable_resource: shared-gradle-cache

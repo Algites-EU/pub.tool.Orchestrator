@@ -1,0 +1,55 @@
+model_version: 1
+
+environment:
+  id: example-environment
+  description: >
+    Complex demonstration environment containing two deployment hosts, a local
+    NAS, a remote backup NAS and a shared datacenter SAN across three physical
+    sites. It demonstrates STORAGE_SYSTEM, HOST and SITE independence.
+
+sites:
+  local-site:
+    description: Primary local site containing example-host and the local NAS.
+  datacenter-site:
+    description: Datacenter site containing example-secondary-host and the shared SAN.
+  remote-backup-site:
+    description: Independent remote site used for off-site backup storage.
+
+hosts:
+  example-host:
+    description: Primary example deployment host with local NVMe and SATA storage.
+    site: local-site
+  example-secondary-host:
+    description: Secondary deployment host located in the datacenter.
+    site: datacenter-site
+  example-local-nas:
+    description: >
+      NAS appliance at local-site. It is not a guest deployment host but it
+      participates in backing-storage independence calculations.
+    site: local-site
+  example-remote-nas:
+    description: Independent NAS appliance located at remote-backup-site.
+    site: remote-backup-site
+  example-san-controller-a:
+    description: First physical controller/appliance of the shared datacenter SAN.
+    site: datacenter-site
+  example-san-controller-b:
+    description: Second physical controller/appliance of the shared datacenter SAN.
+    site: datacenter-site
+
+storage_systems:
+  local-nas-storage:
+    description: >
+      Storage system provided by example-local-nas. It is independent of
+      example-host at STORAGE_SYSTEM and HOST level but shares local-site.
+    impacted_hosts: [example-local-nas]
+  remote-backup-storage:
+    description: >
+      Storage system provided by the remote NAS. It is independent of the
+      primary host and primary site.
+    impacted_hosts: [example-remote-nas]
+  datacenter-san:
+    description: >
+      Shared redundant SAN used by datacenter hosts. Both controller appliances
+      belong to its backing HOST dependency set.
+    impacted_hosts: [example-san-controller-a, example-san-controller-b]

@@ -1,0 +1,168 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://algites.eu/orchestrator/deployment/model/v1/guest-deployment-configuration.schema.yml"
+title: "Algites Orchestrator GuestDeploymentConfiguration"
+description: >
+  Binds one GuestConfiguration to one HostConfiguration and supplies concrete
+  deployment values such as CPU/RAM, IP addresses, block sizes and implementation
+  overrides. EXCLUSIVE mountable resources are realized directly by this deployment.
+  SHARED mountable resources instead reference an independently defined
+  SharedMountableResourceConfiguration. Guest business constraints cannot be
+  weakened here; the resolver validates this binding against them.
+
+type: object
+additionalProperties: false
+required:
+  - model_version
+  - deployment
+  - guest
+  - host
+  - compute
+  - network_interfaces
+  - mountable_resources
+properties:
+
+  model_version:
+    const: 1
+    description: >
+      Version of the Algites Orchestrator deployment model. During initial model
+      development this value remains 1 rather than changing with draft revisions.
+
+  deployment:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - description
+    properties:
+      id:
+        $ref: "common.schema.yml#/$defs/Identifier"
+      description:
+        $ref: "common.schema.yml#/$defs/Description"
+
+  guest:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: GuestConfiguration id instantiated by this deployment.
+
+  host:
+    $ref: "common.schema.yml#/$defs/Identifier"
+    description: HostConfiguration id on which the guest itself is deployed.
+
+  compute:
+    type: object
+    additionalProperties: false
+    required:
+      - description
+    properties:
+      description:
+        $ref: "common.schema.yml#/$defs/Description"
+      cpu:
+        type: integer
+        minimum: 1
+        description: Concrete virtual CPU allocation.
+      memory:
+        $ref: "common.schema.yml#/$defs/DataSize"
+        description: Concrete guest memory allocation.
+
+  network_interfaces:
+    type: object
+    additionalProperties: false
+    required:
+      - description
+      - items
+    properties:
+      description:
+        $ref: "common.schema.yml#/$defs/Description"
+      items:
+        type: object
+        description: Bindings from guest logical adapter ids to host networks.
+        propertyNames:
+          $ref: "common.schema.yml#/$defs/Identifier"
+        additionalProperties:
+          type: object
+          additionalProperties: false
+          required:
+            - description
+            - host_network
+          properties:
+            description:
+              $ref: "common.schema.yml#/$defs/Description"
+            host_network:
+              $ref: "common.schema.yml#/$defs/Identifier"
+              description: Network id from HostConfiguration.networks.
+            ipv4:
+              type: string
+              minLength: 1
+              description: Optional concrete IPv4 address.
+            ipv6:
+              type: string
+              minLength: 1
+              description: Optional concrete IPv6 address.
+            mac_address:
+              type: string
+              minLength: 1
+              description: Optional stable guest MAC address.
+
+  mountable_resources:
+    type: object
+    additionalProperties: false
+    required:
+      - description
+      - items
+    properties:
+      description:
+        $ref: "common.schema.yml#/$defs/Description"
+      items:
+        type: object
+        description: >
+          Concrete bindings for guest mountable resources. A directly realized
+          resource specifies a HostStorageTarget and optional backend/interface.
+          A shared resource specifies only shared_mountable_resource; realization
+          details come from SharedMountableResourceConfiguration.
+        propertyNames:
+          $ref: "common.schema.yml#/$defs/Identifier"
+        additionalProperties:
+          oneOf:
+            - title: Direct mountable-resource binding
+              description: >
+                Direct realization normally used by an EXCLUSIVE guest resource.
+                Cross-configuration validation rejects this form when the
+                GuestConfiguration resource declares sharing: SHARED.
+              type: object
+              additionalProperties: false
+              required:
+                - description
+                - host_storage_target
+              properties:
+                description:
+                  $ref: "common.schema.yml#/$defs/Description"
+                size:
+                  $ref: "common.schema.yml#/$defs/DataSize"
+                  description: Concrete logical size where sizing is meaningful.
+                host_storage_target:
+                  $ref: "common.schema.yml#/$defs/Identifier"
+                  description: Storage target id from the guest's HostConfiguration.
+                backend:
+                  $ref: "common.schema.yml#/$defs/MountableResourceBackendType"
+                  description: Optional compatible backend override.
+                host_mountable_resource_interface:
+                  $ref: "common.schema.yml#/$defs/Identifier"
+                  description: >
+                    Optional named FILESYSTEM provider from the guest's host.
+                    Invalid for BLOCK resources; host defaults apply when omitted.
+
+            - title: Shared mountable-resource binding
+              description: >
+                Binds a SHARED guest resource to independently managed backing.
+                Cross-configuration validation verifies storage class,
+                representation and accessibility from the guest deployment.
+              type: object
+              additionalProperties: false
+              required:
+                - description
+                - shared_mountable_resource
+              properties:
+                description:
+                  $ref: "common.schema.yml#/$defs/Description"
+                shared_mountable_resource:
+                  $ref: "common.schema.yml#/$defs/Identifier"
+                  description: Id from SharedMountableResourceConfiguration.

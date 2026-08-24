@@ -1,0 +1,55 @@
+model_version: 1
+
+guest:
+  id: example-datacenter-guest
+  description: >
+    Smaller demonstration guest showing local disposable root storage together
+    with persistent data on an external shared SAN.
+
+os:
+  description: NixOS configuration for the datacenter example guest.
+  type: NIXOS
+  configuration_path: nixos/
+
+compute:
+  description: Compute defaults for the datacenter guest.
+  cpu:
+    minimum: 1
+    default: 2
+  memory:
+    minimum: 512MiB
+    default: 2GiB
+
+network_interfaces:
+  description: Logical datacenter adapters.
+  items:
+    primary:
+      description: Primary routed datacenter adapter.
+      required: true
+
+mountable_resources:
+  description: Datacenter guest filesystems.
+  items:
+    system-root:
+      description: Reproducible local root disk.
+      storage_class: DISPOSABLE
+      purpose: SYSTEM
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /
+      capacity:
+        minimum: 4GiB
+        default: 16GiB
+    application-data:
+      description: Persistent application data stored on the shared SAN.
+      storage_class: PERSISTENT
+      purpose: DATA
+      representation: BLOCK
+      access: RW
+      sharing: EXCLUSIVE
+      mount_point: /storage/data
+      capacity:
+        minimum: 1GiB
+        default: 20GiB
+  relations: []

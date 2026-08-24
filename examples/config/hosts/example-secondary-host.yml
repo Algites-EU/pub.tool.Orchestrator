@@ -1,0 +1,87 @@
+model_version: 1
+environment: example-environment
+
+host:
+  id: example-secondary-host
+  description: >
+    Datacenter deployment host demonstrating implicit host-local storage together
+    with a persistent external SAN storage system.
+
+storage_devices:
+  local-ssd:
+    description: Local SSD of the secondary host.
+    type: PHYSICAL_DISK
+    path: /dev/disk/by-id/ata-EXAMPLE_SECONDARY_SSD
+  san-lun:
+    description: Logical SAN LUN presented to the secondary host.
+    type: OTHER
+    path: /dev/disk/by-id/scsi-EXAMPLE_SAN_LUN
+
+storage_controllers:
+  local-storage-controller:
+    description: Local storage controller of example-secondary-host.
+  san-hba:
+    description: Host bus adapter providing access to datacenter-san.
+
+storage_targets:
+  local-disposable:
+    description: Disposable local SSD target for reproducible guest roots.
+    storage_class: DISPOSABLE
+    storage_system: HOST_LOCAL_STORAGE
+    impacted_devices: [local-ssd]
+    impacted_controllers: [local-storage-controller]
+    supported_representations:
+      - type: BLOCK
+        description: Disposable local guest disks.
+        supported_backends:
+          - type: QCOW2
+            description: QCOW2 image directory on local SSD.
+            directory: /srv/libvirt/DISPOSABLE/qemu/images
+  san-persistent:
+    description: Persistent storage allocated from the shared datacenter SAN.
+    storage_class: PERSISTENT
+    storage_system: datacenter-san
+    impacted_devices: [san-lun]
+    impacted_controllers: [san-hba]
+    supported_representations:
+      - type: BLOCK
+        description: SAN-backed persistent block resources.
+        supported_backends:
+          - type: LVM
+            description: LVM volumes created on a SAN-backed VG.
+            volume_group: VG_SAN_PERSISTENT
+      - type: FILESYSTEM
+        description: SAN-backed host directories exported to guests.
+        supported_backends:
+          - type: DIRECTORY
+            description: Directory root on a SAN-backed host filesystem.
+            directory: /srv/libvirt/PERSISTENT/share
+
+networks:
+  vm:
+    description: Routed datacenter guest network.
+    bridge: virbr-vm
+    mode: ROUTED
+    subnet: 10.60.0.0/24
+    gateway: 10.60.0.1
+    ipv6_subnet: fd60::/64
+    ipv6_gateway: fd60::1
+
+mountable_resource_interfaces:
+  nfs-vm:
+    description: NFS provider for Linux/NixOS guests.
+    type: NFS
+    host_network: vm
+    server_address: 10.60.0.1
+  samba-vm:
+    description: Samba provider for Windows/macOS guests.
+    type: SAMBA
+    host_network: vm
+    server_address: 10.60.0.1
+
+defaults:
+  filesystem_interface_by_guest_os:
+    NIXOS: nfs-vm
+    LINUX: nfs-vm
+    WINDOWS: samba-vm
+    MACOS: samba-vm
