@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:complexType name="DeploymentComputeConfigurationType">
+    <xs:all>
+      <xs:element name="description" type="NonEmptyStringType"/>
+      <xs:element name="cpu" type="xs:positiveInteger" minOccurs="0"/>
+      <xs:element name="memory" type="DataSizeType" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="DeploymentNetworkInterfacesType">
+    <xs:all>
+      <xs:element name="description" type="NonEmptyStringType"/>
+      <xs:element name="items" type="DynamicMapType"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="DeploymentMountableResourcesType">
+    <xs:all>
+      <xs:element name="description" type="NonEmptyStringType"/>
+      <xs:element name="items" type="DynamicMapType"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="guest-deployment-configuration">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="model_version">
+          <xs:simpleType><xs:restriction base="xs:positiveInteger"><xs:enumeration value="1"/></xs:restriction></xs:simpleType>
+        </xs:element>
+        <xs:element name="deployment" type="EntityIdentityType"/>
+        <xs:element name="guest" type="ConfigurationReferenceType"/>
+        <xs:element name="host" type="ConfigurationReferenceType"/>
+        <xs:element name="compute" type="DeploymentComputeConfigurationType"/>
+        <xs:element name="network_interfaces" type="DeploymentNetworkInterfacesType"/>
+        <xs:element name="mountable_resources" type="DeploymentMountableResourcesType"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

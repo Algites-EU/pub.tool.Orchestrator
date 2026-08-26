@@ -1120,7 +1120,7 @@ Directly sharing `/nix/store` between guests is not the intended Nix caching mod
 
 ## Model Files
 
-The Deployment model is defined by JSON Schema documents written in YAML syntax.
+The Deployment model is defined by authoritative JSON Schema documents written in YAML syntax, with a parallel XML Schema representation.
 
 Conceptually:
 
@@ -1130,14 +1130,20 @@ orchestrator/deployment/
 ├── model/
 │   ├── model.yml
 │   ├── common.schema.yml
+│   ├── common.xsd
 │   ├── deployment-environment-configuration.schema.yml
+│   ├── deployment-environment-configuration.xsd
 │   ├── host-configuration.schema.yml
+│   ├── host-configuration.xsd
 │   ├── guest-configuration.schema.yml
+│   ├── guest-configuration.xsd
 │   ├── shared-mountable-resource-configuration.schema.yml
+│   ├── shared-mountable-resource-configuration.xsd
 │   ├── guest-deployment-configuration.schema.yml
+│   ├── guest-deployment-configuration.xsd
 │   ├── deployment-plan.schema.yml
-│   ├── deployment-bundle-manifest.schema.yml
 │   ├── deployment-plan.xsd
+│   ├── deployment-bundle-manifest.schema.yml
 │   ├── deployment-bundle-manifest.xsd
 │   └── validation-report.xsd
 ├── config/
@@ -1149,7 +1155,7 @@ orchestrator/deployment/
 └── example-plans/
 ```
 
-The schemas are the authoritative definition of the current configuration shape. This README explains their intended architecture and semantics.
+The YAML/JSON Schemas are the authoritative definition of the current configuration input shape. A parallel XSD set describes the deterministic XML representation of the same model structures and CLI outputs. Because identifier-keyed mappings become dynamically named XML elements, XSD 1.0 cannot express every map-entry constraint as precisely as JSON Schema; complete semantic validation remains the responsibility of the Orchestrator. This README explains the intended architecture and semantics.
 
 ---
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:element name="shared-mountable-resource-configuration">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="model_version">
+          <xs:simpleType><xs:restriction base="xs:positiveInteger"><xs:enumeration value="1"/></xs:restriction></xs:simpleType>
+        </xs:element>
+        <xs:element name="shared_mountable_resource" type="EntityIdentityType"/>
+        <xs:element name="storage_class" type="MountableResourceStorageClassType"/>
+        <xs:element name="representation" type="MountableResourceRepresentationType"/>
+        <xs:element name="host" type="ConfigurationReferenceType"/>
+        <xs:element name="host_storage_target" type="IdentifierType"/>
+        <xs:element name="size" type="DataSizeType" minOccurs="0"/>
+        <xs:element name="backend" type="MountableResourceBackendType" minOccurs="0"/>
+        <xs:element name="host_mountable_resource_interface" type="IdentifierType" minOccurs="0"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

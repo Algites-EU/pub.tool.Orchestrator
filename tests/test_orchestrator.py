@@ -16,6 +16,7 @@ from lxml import etree
 
 from orchestrator.common.configuration import ConfigurationCategory, ConfigurationRepository
 from orchestrator.common.errors import AmbiguousReferenceError, ConfigurationValidationError, ResolutionError, UnresolvedReferenceError
+from orchestrator.common.io import serialize_xml
 from orchestrator.deployment.resolver import DeploymentResolver
 from orchestrator.deployment.validation import DeploymentConfigurationValidator, SchemaValidator
 
@@ -304,6 +305,56 @@ class OrchestratorTests(unittest.TestCase):
             repo = self.repository(config)
             with self.assertRaises(ConfigurationValidationError):
                 DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+
+    def test_all_xml_schemas_compile_and_registry_is_complete(self):
+        registry = yaml.safe_load((MODEL / "model.yml").read_text(encoding="utf-8"))
+        expected = {
+            "common",
+            "deployment_environment_configuration",
+            "host_configuration",
+            "guest_configuration",
+            "shared_mountable_resource_configuration",
+            "guest_deployment_configuration",
+            "deployment_plan",
+            "deployment_bundle_manifest",
+            "validation_report",
+        }
+        self.assertEqual(expected, set(registry["xml_schemas"]))
+        for schema_name in registry["xml_schemas"].values():
+            with self.subTest(schema=schema_name):
+                etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
+
+    def test_configuration_examples_have_schema_valid_xml_equivalents(self):
+        cases = [
+            (EXAMPLES / "environments/example-environment/example-environment.yml",
+             "deployment-environment-configuration", "deployment-environment-configuration.xsd"),
+            (EXAMPLES / "hosts/example-host/example-host.yml",
+             "host-configuration", "host-configuration.xsd"),
+            (EXAMPLES / "hosts/example-secondary-host/example-secondary-host.yml",
+             "host-configuration", "host-configuration.xsd"),
+            (EXAMPLES / "guests/example-guest/example-guest.yml",
+             "guest-configuration", "guest-configuration.xsd"),
+            (EXAMPLES / "guests/example-cache-provider/example-cache-provider.yml",
+             "guest-configuration", "guest-configuration.xsd"),
+            (EXAMPLES / "guests/example-datacenter-guest/example-datacenter-guest.yml",
+             "guest-configuration", "guest-configuration.xsd"),
+            (EXAMPLES / "shared-mountable-resources/shared-nix-cache/shared-nix-cache.yml",
+             "shared-mountable-resource-configuration", "shared-mountable-resource-configuration.xsd"),
+            (EXAMPLES / "shared-mountable-resources/shared-gradle-cache/shared-gradle-cache.yml",
+             "shared-mountable-resource-configuration", "shared-mountable-resource-configuration.xsd"),
+            (EXAMPLES / "deployments/example-guest-deployment/example-guest-deployment.yml",
+             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
+            (EXAMPLES / "deployments/example-cache-provider-deployment/example-cache-provider-deployment.yml",
+             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
+            (EXAMPLES / "deployments/example-datacenter-guest-deployment/example-datacenter-guest-deployment.yml",
+             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
+        ]
+        for source, root_name, schema_name in cases:
+            with self.subTest(source=source.name, schema=schema_name):
+                data = yaml.safe_load(source.read_text(encoding="utf-8"))
+                document = etree.fromstring(serialize_xml(data, root_name).encode("utf-8"))
+                schema = etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
+                self.assertTrue(schema.validate(document), schema.error_log)
 
     def test_cdp_supports_xml_and_xml_matches_xsd(self):
         proc = self.run_cli(
