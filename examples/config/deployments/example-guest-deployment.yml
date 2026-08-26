@@ -2,6 +2,7 @@ model_version: 1
 
 deployment:
   id: example-guest-deployment
+  display_name: Example Guest Deployment
   description: >
     Main example deployment demonstrating direct storage bindings, placement
     independence, local/off-site archive storage and independent shared resources.

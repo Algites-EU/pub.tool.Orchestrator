@@ -31,6 +31,7 @@ properties:
     additionalProperties: false
     required:
       - id
+      - display_name
       - description
     properties:
       id:
@@ -38,6 +39,8 @@ properties:
         description: >
           Stable identity used by GuestDeploymentConfiguration to bind a guest's
           SHARED MountableResource to this concrete shared backing resource.
+      display_name:
+        $ref: "common.schema.yml#/$defs/DisplayName"
       description:
         $ref: "common.schema.yml#/$defs/Description"
 
@@ -54,10 +57,10 @@ properties:
       to it must request the same representation.
 
   host:
-    $ref: "common.schema.yml#/$defs/Identifier"
+    $ref: "common.schema.yml#/$defs/ConfigurationReference"
     description: >
-      Deployment host responsible for realizing and exposing this resource. The
-      identifier refers to a HostConfiguration. This lifecycle host is distinct
+      HostConfiguration reference responsible for realizing and exposing this resource.
+      This lifecycle host is distinct
       from external StorageSystem hosts/appliances represented in the environment.
 
   host_storage_target:

@@ -16,9 +16,10 @@ properties:
   environment:
     type: object
     additionalProperties: false
-    required: [id, description]
+    required: [id, display_name, description]
     properties:
       id: { $ref: "common.schema.yml#/$defs/Identifier" }
+      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
       description: { $ref: "common.schema.yml#/$defs/Description" }
   sites:
     type: object
@@ -29,8 +30,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description]
+      required: [display_name, description]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
   hosts:
     type: object
@@ -42,8 +44,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description, site]
+      required: [display_name, description, site]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         site:
           $ref: "common.schema.yml#/$defs/Identifier"
@@ -57,8 +60,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description]
+      required: [display_name, description]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         impacted_hosts:
           type: array

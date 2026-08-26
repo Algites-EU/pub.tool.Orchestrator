@@ -1,0 +1,47 @@
+model_version: 1
+deployment: example-datacenter-guest-deployment
+guest: example-datacenter-guest
+host: example-secondary-host
+resolved_compute:
+  cpu: 2
+  memory: 4GiB
+resolved_network_interfaces:
+  primary:
+    display_name: Primary
+    description: Primary routed datacenter adapter.
+    host_network: vm
+    ipv4: 10.60.0.50
+    ipv6: fd60::50
+resolved_mountable_resources:
+  system-root:
+    display_name: System Root
+    description: Reproducible local root disk.
+    storage_class: DISPOSABLE
+    purpose: SYSTEM
+    representation: BLOCK
+    access: RW
+    sharing: EXCLUSIVE
+    mount_point: /
+    size: 20GiB
+    host_storage_target: local-disposable
+    storage_system: HOST_LOCAL_STORAGE@example-secondary-host
+    backend:
+      type: QCOW2
+      path: /srv/libvirt/DISPOSABLE/qemu/images/example-datacenter-guest-deployment/system-root.qcow2
+  application-data:
+    display_name: Application Data
+    description: Persistent application data stored on the shared SAN.
+    storage_class: PERSISTENT
+    purpose: DATA
+    representation: BLOCK
+    access: RW
+    sharing: EXCLUSIVE
+    mount_point: /storage/data
+    size: 100GiB
+    host_storage_target: san-persistent
+    storage_system: datacenter-san
+    backend:
+      type: LVM
+      path: /dev/VG_SAN_PERSISTENT/example-datacenter-guest-deployment-application-data
+relation_results: []
+warnings: []

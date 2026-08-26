@@ -3,6 +3,7 @@ environment: example-environment
 
 host:
   id: example-host
+  display_name: Example Host
   description: >
     Primary example libvirt/KVM deployment host. Several local targets share
     one implicit HOST_LOCAL_STORAGE system but expose different device and
@@ -10,74 +11,92 @@ host:
 
 storage_devices:
   nvme-a:
+    display_name: NVMe A
     description: First physical NVMe device.
     type: PHYSICAL_DISK
     path: /dev/disk/by-id/nvme-EXAMPLE_A
   nvme-b:
+    display_name: NVMe B
     description: Second physical NVMe device.
     type: PHYSICAL_DISK
     path: /dev/disk/by-id/nvme-EXAMPLE_B
   nvme-a-persistent-partition:
+    display_name: NVMe A Persistent Partition
     description: Persistent RAID1 partition on the first NVMe device.
     type: PARTITION
     path: /dev/nvme0n1p1
   nvme-b-persistent-partition:
+    display_name: NVMe B Persistent Partition
     description: Persistent RAID1 partition on the second NVMe device.
     type: PARTITION
     path: /dev/nvme1n1p1
   nvme-persistent-raid1:
+    display_name: NVMe Persistent RAID1
     description: RAID1 device providing persistent NVMe storage.
     type: RAID
     path: /dev/md/nvme_raid1_vm_0
   nvme-persistent-vg:
+    display_name: NVMe Persistent Vg
     description: LVM volume group on the persistent NVMe RAID1.
     type: LVM_VG
     path: VG_NVME_RAID1
   vm-persistent-lv:
+    display_name: VM Persistent Lv
     description: Filesystem LV used for persistent file-backed VM storage.
     type: LVM_LV
     path: /dev/VG_NVME_RAID1/VM_PERSISTENT
   nvme-a-disposable-partition:
+    display_name: NVMe A Disposable Partition
     description: Disposable RAID0 partition on the first NVMe device.
     type: PARTITION
     path: /dev/nvme0n1p2
   nvme-b-disposable-partition:
+    display_name: NVMe B Disposable Partition
     description: Disposable RAID0 partition on the second NVMe device.
     type: PARTITION
     path: /dev/nvme1n1p2
   nvme-disposable-raid0:
+    display_name: NVMe Disposable RAID0
     description: RAID0 device providing disposable NVMe storage.
     type: RAID
     path: /dev/md/nvme_raid0_vm_0
   vm-disposable-lv:
+    display_name: VM Disposable Lv
     description: Filesystem LV used for disposable file-backed VM storage.
     type: LVM_LV
     path: /dev/VG_NVME_RAID0/VM_DISPOSABLE
   sata-a:
+    display_name: SATA A
     description: First physical SATA disk used by the independent local persistent target.
     type: PHYSICAL_DISK
     path: /dev/disk/by-id/ata-EXAMPLE_SATA_A
   sata-b:
+    display_name: SATA B
     description: Second physical SATA disk used by the independent local persistent target.
     type: PHYSICAL_DISK
     path: /dev/disk/by-id/ata-EXAMPLE_SATA_B
   sata-persistent-raid1:
+    display_name: SATA Persistent RAID1
     description: RAID1 device over the example SATA disks.
     type: RAID
     path: /dev/md/example_sata_raid1
   sata-persistent-vg:
+    display_name: SATA Persistent Vg
     description: LVM volume group on the SATA RAID1.
     type: LVM_VG
     path: VG_SATA_RAID1
 
 storage_controllers:
   nvme-controller:
+    display_name: NVMe Controller
     description: Host PCIe/NVMe I/O controller path shared by both example NVMe devices.
   sata-controller:
+    display_name: SATA Controller
     description: Host SATA controller used by the example SATA disks.
 
 storage_targets:
   persistent-nvme:
+    display_name: Persistent NVMe
     description: >
       Fast persistent local storage backed by NVMe RAID1. It supports block
       resources as QCOW2 or LVM and filesystem resources as host directories.
@@ -110,6 +129,7 @@ storage_targets:
             directory: /srv/libvirt/PERSISTENT/share
 
   disposable-nvme:
+    display_name: Disposable NVMe
     description: >
       Disposable local storage backed by NVMe RAID0. It shares the same physical
       NVMe devices and controller with persistent-nvme, which is deliberately
@@ -139,6 +159,7 @@ storage_targets:
             directory: /srv/libvirt/DISPOSABLE/share
 
   persistent-sata:
+    display_name: Persistent SATA
     description: >
       Persistent local SATA target on devices/controller independent from the
       NVMe path. It still belongs to the same HOST_LOCAL_STORAGE storage system,
@@ -156,6 +177,7 @@ storage_targets:
             volume_group: VG_SATA_RAID1
 
   archive-local-nas:
+    display_name: Archive Local NAS
     description: >
       Archive filesystem target physically stored on the local NAS. The NAS is
       a different STORAGE_SYSTEM and HOST but remains at local-site.
@@ -170,6 +192,7 @@ storage_targets:
             directory: /srv/libvirt/ARCHIVE_LOCAL/share
 
   archive-remote-nas:
+    display_name: Archive Remote NAS
     description: >
       Archive filesystem target physically stored on a NAS at remote-backup-site.
     storage_class: ARCHIVE
@@ -184,6 +207,7 @@ storage_targets:
 
 networks:
   vm:
+    display_name: VM
     description: General guest NAT network.
     bridge: virbr-vm
     mode: NAT
@@ -192,6 +216,7 @@ networks:
     ipv6_subnet: fd27:122::/64
     ipv6_gateway: fd27:122::1
   isolated-agents:
+    display_name: Isolated Agents
     description: Isolated guest network without automatic external forwarding.
     bridge: virbr-agents
     mode: ISOLATED
@@ -200,6 +225,7 @@ networks:
 
 mountable_resource_interfaces:
   nfs-vm:
+    display_name: NFS VM
     description: >
       NFS provider for Linux/NixOS guest filesystem resources. Selecting it also
       drives export and firewall configuration on the host.
@@ -207,11 +233,13 @@ mountable_resource_interfaces:
     host_network: vm
     server_address: 172.27.122.1
   samba-vm:
+    display_name: Samba VM
     description: Samba provider primarily intended for Windows/macOS guests.
     type: SAMBA
     host_network: vm
     server_address: 172.27.122.1
   virtiofs-local:
+    display_name: virtiofs Local
     description: Optional local virtiofs provider, included as a capability example.
     type: VIRTIOFS
 

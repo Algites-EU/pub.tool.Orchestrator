@@ -22,9 +22,9 @@ properties:
   model_version:
     const: 1
     description: Version of the Algites Orchestrator deployment model; initial development remains at version 1.
-  deployment: { $ref: "common.schema.yml#/$defs/Identifier" }
-  guest: { $ref: "common.schema.yml#/$defs/Identifier" }
-  host: { $ref: "common.schema.yml#/$defs/Identifier" }
+  deployment: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+  guest: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+  host: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
   resolved_compute:
     type: object
     additionalProperties: false
@@ -37,8 +37,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: true
-      required: [description, host_network]
+      required: [display_name, description, host_network]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         host_network: { $ref: "common.schema.yml#/$defs/Identifier" }
   resolved_mountable_resources:
@@ -48,6 +49,7 @@ properties:
       type: object
       additionalProperties: true
       required:
+        - display_name
         - description
         - storage_class
         - purpose
@@ -59,6 +61,7 @@ properties:
         - storage_system
         - backend
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         storage_class: { $ref: "common.schema.yml#/$defs/MountableResourceStorageClass" }
         purpose: { $ref: "common.schema.yml#/$defs/MountableResourcePurpose" }
@@ -85,14 +88,15 @@ properties:
           properties:
             provider: { $ref: "common.schema.yml#/$defs/Identifier" }
             type: { $ref: "common.schema.yml#/$defs/MountableResourceInterfaceType" }
-        shared_mountable_resource: { $ref: "common.schema.yml#/$defs/Identifier" }
+        shared_mountable_resource: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
   relation_results:
     type: array
     items:
       type: object
       additionalProperties: false
-      required: [description, mountable_resources, relations, requirement, satisfied]
+      required: [display_name, description, mountable_resources, relations, requirement, satisfied]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         mountable_resources:
           type: array

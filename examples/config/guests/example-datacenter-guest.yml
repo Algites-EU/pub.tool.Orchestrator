@@ -2,6 +2,7 @@ model_version: 1
 
 guest:
   id: example-datacenter-guest
+  display_name: Example Datacenter Guest
   description: >
     Smaller demonstration guest showing local disposable root storage together
     with persistent data on an external shared SAN.
@@ -24,6 +25,7 @@ network_interfaces:
   description: Logical datacenter adapters.
   items:
     primary:
+      display_name: Primary
       description: Primary routed datacenter adapter.
       required: true
 
@@ -31,6 +33,7 @@ mountable_resources:
   description: Datacenter guest filesystems.
   items:
     system-root:
+      display_name: System Root
       description: Reproducible local root disk.
       storage_class: DISPOSABLE
       purpose: SYSTEM
@@ -42,6 +45,7 @@ mountable_resources:
         minimum: 4GiB
         default: 16GiB
     application-data:
+      display_name: Application Data
       description: Persistent application data stored on the shared SAN.
       storage_class: PERSISTENT
       purpose: DATA

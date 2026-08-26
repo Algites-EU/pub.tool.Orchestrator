@@ -2,25 +2,25 @@ model_version: 1
 deployment: example-guest-deployment
 guest: example-guest
 host: example-host
-
 resolved_compute:
   cpu: 4
   memory: 8GiB
-
 resolved_network_interfaces:
   primary:
-    description: Resolved primary guest adapter.
+    display_name: Primary
+    description: Primary application/network adapter.
     host_network: vm
     ipv4: 172.27.122.50
     ipv6: fd27:122::50
   management:
-    description: Resolved optional management adapter.
+    display_name: Management
+    description: Optional separate management adapter.
     host_network: isolated-agents
     ipv4: 172.27.130.50
-
 resolved_mountable_resources:
   system-root:
-    description: Resolved reproducible guest root filesystem.
+    display_name: System Root
+    description: Reproducible guest root filesystem.
     storage_class: DISPOSABLE
     purpose: SYSTEM
     representation: BLOCK
@@ -33,9 +33,9 @@ resolved_mountable_resources:
     backend:
       type: QCOW2
       path: /srv/libvirt/DISPOSABLE/qemu/images/example-guest-deployment/system-root.qcow2
-
   application-data:
-    description: Resolved primary persistent application data.
+    display_name: Application Data
+    description: Primary persistent application data.
     storage_class: PERSISTENT
     purpose: DATA
     representation: BLOCK
@@ -48,9 +48,12 @@ resolved_mountable_resources:
     backend:
       type: LVM
       path: /dev/VG_NVME_RAID1/example-guest-deployment-application-data
-
   transaction-log:
-    description: Resolved persistent transaction/log resource.
+    display_name: Transaction Log
+    description: 'Separate persistent transaction/log data whose I/O should preferably
+      use devices and controllers independent from application-data.
+
+      '
     storage_class: PERSISTENT
     purpose: DATA
     representation: BLOCK
@@ -63,9 +66,9 @@ resolved_mountable_resources:
     backend:
       type: LVM
       path: /dev/VG_SATA_RAID1/example-guest-deployment-transaction-log
-
   archive-media:
-    description: Resolved archive media filesystem.
+    display_name: Archive Media
+    description: Large lower-performance media/archive data.
     storage_class: ARCHIVE
     purpose: DATA
     representation: FILESYSTEM
@@ -82,9 +85,12 @@ resolved_mountable_resources:
       type: NFS
       server_address: 172.27.122.1
       export: /example-guest-deployment/archive-media
-
   local-backup:
-    description: Resolved local backup filesystem.
+    display_name: Local Backup
+    description: 'Local backup filesystem that must be independent from primary data
+      at storage-system and backing-host level while it may remain at the same site.
+
+      '
     storage_class: ARCHIVE
     purpose: BACKUP
     representation: FILESYSTEM
@@ -101,9 +107,12 @@ resolved_mountable_resources:
       type: NFS
       server_address: 172.27.122.1
       export: /example-guest-deployment/local-backup
-
   offsite-backup:
-    description: Resolved off-site backup filesystem.
+    display_name: Offsite Backup
+    description: 'Off-site backup filesystem whose backing must not share primary
+      data''s storage system, host or site.
+
+      '
     storage_class: ARCHIVE
     purpose: BACKUP
     representation: FILESYSTEM
@@ -120,9 +129,12 @@ resolved_mountable_resources:
       type: NFS
       server_address: 172.27.122.1
       export: /example-guest-deployment/offsite-backup
-
   nix-cache:
-    description: Resolved shared read-only Nix cache filesystem.
+    display_name: Nix Cache
+    description: 'Shared read-only Nix cache filesystem consumed by this guest. The
+      same backing is populated RW by example-cache-provider.
+
+      '
     storage_class: PERSISTENT
     purpose: CACHE
     representation: FILESYSTEM
@@ -131,18 +143,21 @@ resolved_mountable_resources:
     mount_point: /storage/cache/nix
     host_storage_target: persistent-nvme
     storage_system: HOST_LOCAL_STORAGE@example-host
-    shared_mountable_resource: shared-nix-cache
     backend:
       type: DIRECTORY
       path: /srv/libvirt/PERSISTENT/share/shared/shared-nix-cache
+    shared_mountable_resource: shared-nix-cache
     interface:
       provider: nfs-vm
       type: NFS
       server_address: 172.27.122.1
       export: /shared/shared-nix-cache
-
   gradle-cache:
-    description: Resolved shared read-only Gradle cache filesystem.
+    display_name: Gradle Cache
+    description: 'Shared read-only Gradle dependency cache. Its backing is intentionally
+      disposable because it can be rebuilt.
+
+      '
     storage_class: DISPOSABLE
     purpose: CACHE
     representation: FILESYSTEM
@@ -151,40 +166,57 @@ resolved_mountable_resources:
     mount_point: /storage/cache/gradle
     host_storage_target: disposable-nvme
     storage_system: HOST_LOCAL_STORAGE@example-host
-    shared_mountable_resource: shared-gradle-cache
     backend:
       type: DIRECTORY
       path: /srv/libvirt/DISPOSABLE/share/shared/shared-gradle-cache
+    shared_mountable_resource: shared-gradle-cache
     interface:
       provider: nfs-vm
       type: NFS
       server_address: 172.27.122.1
       export: /shared/shared-gradle-cache
-
 relation_results:
-  - description: Preferred separation of application-data and transaction-log.
-    mountable_resources: [application-data, transaction-log]
-    relations: [NO_SHARED_DEVICE, NO_SHARED_CONTROLLER]
-    requirement: PREFERRED
-    satisfied: true
-    message: >
-      persistent-nvme and persistent-sata have disjoint impacted device and
-      controller sets even though both belong to HOST_LOCAL_STORAGE@example-host.
-  - description: Required local backup independence from primary application data.
-    mountable_resources: [application-data, local-backup]
-    relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST]
-    requirement: REQUIRED
-    satisfied: true
-    message: >
-      application-data uses HOST_LOCAL_STORAGE@example-host while local-backup
-      uses local-nas-storage backed by example-local-nas.
-  - description: Required off-site backup independence from primary application data.
-    mountable_resources: [application-data, offsite-backup]
-    relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST, NO_SHARED_SITE]
-    requirement: REQUIRED
-    satisfied: true
-    message: >
-      offsite-backup uses remote-backup-storage on example-remote-nas at
-      remote-backup-site.
+- display_name: Application Data and Transaction Log Separation
+  description: 'Prefer independent devices and controllers for primary application
+    data and transaction-log to reduce shared I/O bottlenecks.
 
+    '
+  mountable_resources:
+  - application-data
+  - transaction-log
+  relations:
+  - NO_SHARED_DEVICE
+  - NO_SHARED_CONTROLLER
+  requirement: PREFERRED
+  satisfied: true
+  message: All requested relation predicates are satisfied.
+- display_name: Local Backup Independence
+  description: 'Local backup must use a different storage system and backing host
+    than primary application data.
+
+    '
+  mountable_resources:
+  - application-data
+  - local-backup
+  relations:
+  - NO_SHARED_STORAGE_SYSTEM
+  - NO_SHARED_HOST
+  requirement: REQUIRED
+  satisfied: true
+  message: All requested relation predicates are satisfied.
+- display_name: Off-site Backup Independence
+  description: 'Off-site backup must be independent from primary data at storage-system,
+    backing-host and site levels.
+
+    '
+  mountable_resources:
+  - application-data
+  - offsite-backup
+  relations:
+  - NO_SHARED_STORAGE_SYSTEM
+  - NO_SHARED_HOST
+  - NO_SHARED_SITE
+  requirement: REQUIRED
+  satisfied: true
+  message: All requested relation predicates are satisfied.
 warnings: []

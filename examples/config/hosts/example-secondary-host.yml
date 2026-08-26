@@ -3,28 +3,34 @@ environment: example-environment
 
 host:
   id: example-secondary-host
+  display_name: Example Secondary Host
   description: >
     Datacenter deployment host demonstrating implicit host-local storage together
     with a persistent external SAN storage system.
 
 storage_devices:
   local-ssd:
+    display_name: Local SSD
     description: Local SSD of the secondary host.
     type: PHYSICAL_DISK
     path: /dev/disk/by-id/ata-EXAMPLE_SECONDARY_SSD
   san-lun:
+    display_name: SAN Lun
     description: Logical SAN LUN presented to the secondary host.
     type: OTHER
     path: /dev/disk/by-id/scsi-EXAMPLE_SAN_LUN
 
 storage_controllers:
   local-storage-controller:
+    display_name: Local Storage Controller
     description: Local storage controller of example-secondary-host.
   san-hba:
+    display_name: SAN HBA
     description: Host bus adapter providing access to datacenter-san.
 
 storage_targets:
   local-disposable:
+    display_name: Local Disposable
     description: Disposable local SSD target for reproducible guest roots.
     storage_class: DISPOSABLE
     storage_system: HOST_LOCAL_STORAGE
@@ -38,6 +44,7 @@ storage_targets:
             description: QCOW2 image directory on local SSD.
             directory: /srv/libvirt/DISPOSABLE/qemu/images
   san-persistent:
+    display_name: SAN Persistent
     description: Persistent storage allocated from the shared datacenter SAN.
     storage_class: PERSISTENT
     storage_system: datacenter-san
@@ -59,6 +66,7 @@ storage_targets:
 
 networks:
   vm:
+    display_name: VM
     description: Routed datacenter guest network.
     bridge: virbr-vm
     mode: ROUTED
@@ -69,11 +77,13 @@ networks:
 
 mountable_resource_interfaces:
   nfs-vm:
+    display_name: NFS VM
     description: NFS provider for Linux/NixOS guests.
     type: NFS
     host_network: vm
     server_address: 10.60.0.1
   samba-vm:
+    display_name: Samba VM
     description: Samba provider for Windows/macOS guests.
     type: SAMBA
     host_network: vm

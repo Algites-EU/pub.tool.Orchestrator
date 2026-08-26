@@ -2,6 +2,7 @@ model_version: 1
 
 guest:
   id: example-guest
+  display_name: Example Guest
   description: >
     Feature-rich demonstration NixOS guest showing disposable system storage,
     multiple persistent block resources, archive data, local/off-site backup,
@@ -27,9 +28,11 @@ network_interfaces:
   description: Logical adapters required or accepted by the guest.
   items:
     primary:
+      display_name: Primary
       description: Primary application/network adapter.
       required: true
     management:
+      display_name: Management
       description: Optional separate management adapter.
       required: false
 
@@ -37,6 +40,7 @@ mountable_resources:
   description: All filesystems that the guest expects to mount.
   items:
     system-root:
+      display_name: System Root
       description: Reproducible guest root filesystem.
       storage_class: DISPOSABLE
       purpose: SYSTEM
@@ -49,6 +53,7 @@ mountable_resources:
         default: 16GiB
 
     application-data:
+      display_name: Application Data
       description: Primary persistent application data.
       storage_class: PERSISTENT
       purpose: DATA
@@ -61,6 +66,7 @@ mountable_resources:
         default: 20GiB
 
     transaction-log:
+      display_name: Transaction Log
       description: >
         Separate persistent transaction/log data whose I/O should preferably
         use devices and controllers independent from application-data.
@@ -75,6 +81,7 @@ mountable_resources:
         default: 4GiB
 
     archive-media:
+      display_name: Archive Media
       description: Large lower-performance media/archive data.
       storage_class: ARCHIVE
       purpose: DATA
@@ -84,6 +91,7 @@ mountable_resources:
       mount_point: /storage/archive/media
 
     local-backup:
+      display_name: Local Backup
       description: >
         Local backup filesystem that must be independent from primary data at
         storage-system and backing-host level while it may remain at the same site.
@@ -95,6 +103,7 @@ mountable_resources:
       mount_point: /storage/backup/local
 
     offsite-backup:
+      display_name: Offsite Backup
       description: >
         Off-site backup filesystem whose backing must not share primary data's
         storage system, host or site.
@@ -106,6 +115,7 @@ mountable_resources:
       mount_point: /storage/backup/offsite
 
     nix-cache:
+      display_name: Nix Cache
       description: >
         Shared read-only Nix cache filesystem consumed by this guest. The same
         backing is populated RW by example-cache-provider.
@@ -117,6 +127,7 @@ mountable_resources:
       mount_point: /storage/cache/nix
 
     gradle-cache:
+      display_name: Gradle Cache
       description: >
         Shared read-only Gradle dependency cache. Its backing is intentionally
         disposable because it can be rebuilt.
@@ -128,21 +139,24 @@ mountable_resources:
       mount_point: /storage/cache/gradle
 
   relations:
-    - description: >
+    - display_name: Application Data and Transaction Log Separation
+      description: >
         Prefer independent devices and controllers for primary application data
         and transaction-log to reduce shared I/O bottlenecks.
       mountable_resources: [application-data, transaction-log]
       relations: [NO_SHARED_DEVICE, NO_SHARED_CONTROLLER]
       requirement: PREFERRED
 
-    - description: >
+    - display_name: Local Backup Independence
+      description: >
         Local backup must use a different storage system and backing host than
         primary application data.
       mountable_resources: [application-data, local-backup]
       relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST]
       requirement: REQUIRED
 
-    - description: >
+    - display_name: Off-site Backup Independence
+      description: >
         Off-site backup must be independent from primary data at storage-system,
         backing-host and site levels.
       mountable_resources: [application-data, offsite-backup]

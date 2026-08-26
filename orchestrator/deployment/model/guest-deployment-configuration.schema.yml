@@ -32,20 +32,23 @@ properties:
     additionalProperties: false
     required:
       - id
+      - display_name
       - description
     properties:
       id:
         $ref: "common.schema.yml#/$defs/Identifier"
+      display_name:
+        $ref: "common.schema.yml#/$defs/DisplayName"
       description:
         $ref: "common.schema.yml#/$defs/Description"
 
   guest:
-    $ref: "common.schema.yml#/$defs/Identifier"
-    description: GuestConfiguration id instantiated by this deployment.
+    $ref: "common.schema.yml#/$defs/ConfigurationReference"
+    description: GuestConfiguration reference instantiated by this deployment.
 
   host:
-    $ref: "common.schema.yml#/$defs/Identifier"
-    description: HostConfiguration id on which the guest itself is deployed.
+    $ref: "common.schema.yml#/$defs/ConfigurationReference"
+    description: HostConfiguration reference on which the guest itself is deployed.
 
   compute:
     type: object
@@ -164,5 +167,5 @@ properties:
                 description:
                   $ref: "common.schema.yml#/$defs/Description"
                 shared_mountable_resource:
-                  $ref: "common.schema.yml#/$defs/Identifier"
-                  description: Id from SharedMountableResourceConfiguration.
+                  $ref: "common.schema.yml#/$defs/ConfigurationReference"
+                  description: Reference to a SharedMountableResourceConfiguration.

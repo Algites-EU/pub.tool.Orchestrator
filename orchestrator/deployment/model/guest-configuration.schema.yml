@@ -17,9 +17,10 @@ properties:
   guest:
     type: object
     additionalProperties: false
-    required: [id, description]
+    required: [id, display_name, description]
     properties:
       id: { $ref: "common.schema.yml#/$defs/Identifier" }
+      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
       description: { $ref: "common.schema.yml#/$defs/Description" }
   os:
     type: object
@@ -70,8 +71,9 @@ properties:
         additionalProperties:
           type: object
           additionalProperties: false
-          required: [description]
+          required: [display_name, description]
           properties:
+            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
             description: { $ref: "common.schema.yml#/$defs/Description" }
             required:
               type: boolean

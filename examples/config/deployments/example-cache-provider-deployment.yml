@@ -2,6 +2,7 @@ model_version: 1
 
 deployment:
   id: example-cache-provider-deployment
+  display_name: Example Cache Provider Deployment
   description: >
     Deploys example-cache-provider on example-host. The guest populates shared
     caches but does not own their infrastructure lifecycle; both cache backings

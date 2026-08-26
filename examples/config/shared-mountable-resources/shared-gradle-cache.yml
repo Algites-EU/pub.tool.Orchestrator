@@ -1,0 +1,16 @@
+model_version: 1
+
+shared_mountable_resource:
+  id: shared-gradle-cache
+  display_name: Shared Gradle Cache
+  description: >
+    Disposable shared Gradle dependency cache. It can be rebuilt, so its backing
+    deliberately uses the disposable storage class even though multiple guests
+    may consume it concurrently.
+
+storage_class: DISPOSABLE
+representation: FILESYSTEM
+host: example-host
+host_storage_target: disposable-nvme
+backend: DIRECTORY
+host_mountable_resource_interface: nfs-vm

@@ -24,16 +24,17 @@ properties:
     const: 1
     description: Version of the Algites Orchestrator deployment model.
   environment:
-    $ref: "common.schema.yml#/$defs/Identifier"
-    description: Deployment environment used by this host.
+    $ref: "common.schema.yml#/$defs/ConfigurationReference"
+    description: Deployment environment configuration reference used by this host.
   host:
     type: object
     additionalProperties: false
-    required: [id, description]
+    required: [id, display_name, description]
     properties:
       id:
         $ref: "common.schema.yml#/$defs/Identifier"
         description: Host id that must exist in environment.hosts.
+      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
       description: { $ref: "common.schema.yml#/$defs/Description" }
   storage_devices:
     type: object
@@ -45,8 +46,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description, type]
+      required: [display_name, description, type]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         type: { $ref: "common.schema.yml#/$defs/HostStorageDeviceType" }
         path:
@@ -60,8 +62,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description]
+      required: [display_name, description]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
   storage_targets:
     type: object
@@ -76,8 +79,9 @@ properties:
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [description, bridge, mode]
+      required: [display_name, description, bridge, mode]
       properties:
+        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         bridge:
           type: string
@@ -113,8 +117,9 @@ properties:
       oneOf:
         - type: object
           additionalProperties: false
-          required: [description, type, host_network, server_address]
+          required: [display_name, description, type, host_network, server_address]
           properties:
+            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
             description: { $ref: "common.schema.yml#/$defs/Description" }
             type: { const: SAMBA, description: "SMB/CIFS filesystem provider." }
             host_network:
@@ -126,8 +131,9 @@ properties:
               description: Address guests use to reach the SMB server.
         - type: object
           additionalProperties: false
-          required: [description, type, host_network, server_address]
+          required: [display_name, description, type, host_network, server_address]
           properties:
+            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
             description: { $ref: "common.schema.yml#/$defs/Description" }
             type: { const: NFS, description: "NFS filesystem provider." }
             host_network:
@@ -139,8 +145,9 @@ properties:
               description: Address guests use to reach the NFS server.
         - type: object
           additionalProperties: false
-          required: [description, type]
+          required: [display_name, description, type]
           properties:
+            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
             description: { $ref: "common.schema.yml#/$defs/Description" }
             type:
               const: VIRTIOFS

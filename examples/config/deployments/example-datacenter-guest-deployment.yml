@@ -2,6 +2,7 @@ model_version: 1
 
 deployment:
   id: example-datacenter-guest-deployment
+  display_name: Example Datacenter Guest Deployment
   description: >
     Demonstrates a guest on example-secondary-host with local disposable root
     storage and external SAN-backed persistent data.

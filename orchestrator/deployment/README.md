@@ -1198,3 +1198,19 @@ Potential areas include:
 - infrastructure-service guests such as cache, backup, monitoring, or build services.
 
 Future capabilities should be added without weakening the separation between reusable guest requirements, physical environment topology, host capabilities, shared resource lifecycle, concrete deployment bindings, and resolved execution plans.
+
+---
+
+## Command-line interface
+
+The Deployment resolver is exposed through the reusable Python package and the
+`algites-orchestrator` command. The complete command, configuration-discovery,
+namespace, stream, logging and exit-code contract is documented in the repository
+root [`CLI.md`](../../CLI.md).
+
+Typical source-tree usage:
+
+```bash
+python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment
+python3 -m orchestrator vc -cr=examples/config
+```

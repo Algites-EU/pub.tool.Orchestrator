@@ -1,0 +1,71 @@
+model_version: 1
+deployment: example-cache-provider-deployment
+guest: example-cache-provider
+host: example-host
+resolved_compute:
+  cpu: 2
+  memory: 2GiB
+resolved_network_interfaces:
+  primary:
+    display_name: Primary
+    description: Primary adapter used for package/download access and management.
+    host_network: vm
+    ipv4: 172.27.122.40
+resolved_mountable_resources:
+  system-root:
+    display_name: System Root
+    description: Reproducible root filesystem of the cache provider.
+    storage_class: DISPOSABLE
+    purpose: SYSTEM
+    representation: BLOCK
+    access: RW
+    sharing: EXCLUSIVE
+    mount_point: /
+    size: 16GiB
+    host_storage_target: disposable-nvme
+    storage_system: HOST_LOCAL_STORAGE@example-host
+    backend:
+      type: QCOW2
+      path: /srv/libvirt/DISPOSABLE/qemu/images/example-cache-provider-deployment/system-root.qcow2
+  nix-cache:
+    display_name: Nix Cache
+    description: Shared persistent Nix cache filesystem populated by this guest.
+    storage_class: PERSISTENT
+    purpose: CACHE
+    representation: FILESYSTEM
+    access: RW
+    sharing: SHARED
+    mount_point: /storage/cache/nix
+    host_storage_target: persistent-nvme
+    storage_system: HOST_LOCAL_STORAGE@example-host
+    backend:
+      type: DIRECTORY
+      path: /srv/libvirt/PERSISTENT/share/shared/shared-nix-cache
+    shared_mountable_resource: shared-nix-cache
+    interface:
+      provider: nfs-vm
+      type: NFS
+      server_address: 172.27.122.1
+      export: /shared/shared-nix-cache
+  gradle-cache:
+    display_name: Gradle Cache
+    description: Shared disposable Gradle cache filesystem populated by this guest.
+    storage_class: DISPOSABLE
+    purpose: CACHE
+    representation: FILESYSTEM
+    access: RW
+    sharing: SHARED
+    mount_point: /storage/cache/gradle
+    host_storage_target: disposable-nvme
+    storage_system: HOST_LOCAL_STORAGE@example-host
+    backend:
+      type: DIRECTORY
+      path: /srv/libvirt/DISPOSABLE/share/shared/shared-gradle-cache
+    shared_mountable_resource: shared-gradle-cache
+    interface:
+      provider: nfs-vm
+      type: NFS
+      server_address: 172.27.122.1
+      export: /shared/shared-gradle-cache
+relation_results: []
+warnings: []

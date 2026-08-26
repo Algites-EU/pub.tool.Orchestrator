@@ -11,11 +11,34 @@ $defs:
   Identifier:
     title: Identifier
     description: >
-      Stable symbolic identifier used to reference an entity from another part
-      of the configuration. Identifiers form part of the configuration API and
-      should remain stable when implementation details change.
+      Stable symbolic identifier of an entity or an entity local to one
+      configuration document. Identifiers form part of the configuration API and
+      should remain stable when implementation details change. Cross-file
+      references use ConfigurationReference so directory namespaces can be
+      represented without changing the entity id.
     type: string
     pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+
+  ConfigurationReference:
+    title: ConfigurationReference
+    description: >
+      Reference to a configuration file inside one configuration category. A
+      bare identifier is an unqualified reference. One or more '/'-separated
+      identifier segments form an exact category-relative reference such as
+      site01/hostA. References are logical paths, never filesystem paths, and
+      therefore cannot be absolute or contain '.' or '..' segments.
+    type: string
+    pattern: "^[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*$"
+
+  DisplayName:
+    title: DisplayName
+    description: >
+      Human-readable short name of an entity intended for user interfaces,
+      reports, logs and other presentation. Unlike the entity identifier,
+      display_name is not a technical identity, is not used for references and
+      may be changed without changing the entity itself.
+    type: string
+    minLength: 1
 
   Description:
     title: Description
@@ -263,8 +286,9 @@ $defs:
       filesystem, either through a guest block device or a directly mounted share.
     type: object
     additionalProperties: false
-    required: [description, storage_class, purpose, representation, access, sharing, mount_point]
+    required: [display_name, description, storage_class, purpose, representation, access, sharing, mount_point]
     properties:
+      display_name: { $ref: "#/$defs/DisplayName" }
       description: { $ref: "#/$defs/Description" }
       storage_class: { $ref: "#/$defs/MountableResourceStorageClass" }
       purpose: { $ref: "#/$defs/MountableResourcePurpose" }
@@ -295,8 +319,9 @@ $defs:
       mountable resources with a common enforcement requirement.
     type: object
     additionalProperties: false
-    required: [description, mountable_resources, relations, requirement]
+    required: [display_name, description, mountable_resources, relations, requirement]
     properties:
+      display_name: { $ref: "#/$defs/DisplayName" }
       description: { $ref: "#/$defs/Description" }
       mountable_resources:
         type: array
@@ -410,8 +435,9 @@ $defs:
       storage class to host implementations and topology used for relation checks.
     type: object
     additionalProperties: false
-    required: [description, storage_class, storage_system, supported_representations]
+    required: [display_name, description, storage_class, storage_system, supported_representations]
     properties:
+      display_name: { $ref: "#/$defs/DisplayName" }
       description: { $ref: "#/$defs/Description" }
       storage_class: { $ref: "#/$defs/MountableResourceStorageClass" }
       storage_system:
