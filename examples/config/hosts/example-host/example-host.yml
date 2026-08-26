@@ -9,6 +9,13 @@ host:
     one implicit HOST_LOCAL_STORAGE system but expose different device and
     controller dependencies; archive targets use external storage systems.
 
+management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 192.0.2.10
+
 storage_devices:
   nvme-a:
     display_name: NVMe A

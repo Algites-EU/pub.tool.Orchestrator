@@ -15,6 +15,12 @@ resolved_network_interfaces:
     description: Primary adapter used for package/download access and management.
     host_network: vm
     ipv4: 172.27.122.40
+resolved_management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 172.27.122.40
 resolved_mountable_resources:
   system-root:
     display_name: System Root

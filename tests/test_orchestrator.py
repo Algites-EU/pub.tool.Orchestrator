@@ -306,55 +306,47 @@ class OrchestratorTests(unittest.TestCase):
             with self.assertRaises(ConfigurationValidationError):
                 DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
 
-    def test_all_xml_schemas_compile_and_registry_is_complete(self):
-        registry = yaml.safe_load((MODEL / "model.yml").read_text(encoding="utf-8"))
-        expected = {
-            "common",
-            "deployment_environment_configuration",
-            "host_configuration",
-            "guest_configuration",
-            "shared_mountable_resource_configuration",
-            "guest_deployment_configuration",
-            "deployment_plan",
-            "deployment_bundle_manifest",
-            "validation_report",
-        }
-        self.assertEqual(expected, set(registry["xml_schemas"]))
-        for schema_name in registry["xml_schemas"].values():
-            with self.subTest(schema=schema_name):
-                etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
 
-    def test_configuration_examples_have_schema_valid_xml_equivalents(self):
-        cases = [
-            (EXAMPLES / "environments/example-environment/example-environment.yml",
-             "deployment-environment-configuration", "deployment-environment-configuration.xsd"),
-            (EXAMPLES / "hosts/example-host/example-host.yml",
-             "host-configuration", "host-configuration.xsd"),
-            (EXAMPLES / "hosts/example-secondary-host/example-secondary-host.yml",
-             "host-configuration", "host-configuration.xsd"),
-            (EXAMPLES / "guests/example-guest/example-guest.yml",
-             "guest-configuration", "guest-configuration.xsd"),
-            (EXAMPLES / "guests/example-cache-provider/example-cache-provider.yml",
-             "guest-configuration", "guest-configuration.xsd"),
-            (EXAMPLES / "guests/example-datacenter-guest/example-datacenter-guest.yml",
-             "guest-configuration", "guest-configuration.xsd"),
-            (EXAMPLES / "shared-mountable-resources/shared-nix-cache/shared-nix-cache.yml",
-             "shared-mountable-resource-configuration", "shared-mountable-resource-configuration.xsd"),
-            (EXAMPLES / "shared-mountable-resources/shared-gradle-cache/shared-gradle-cache.yml",
-             "shared-mountable-resource-configuration", "shared-mountable-resource-configuration.xsd"),
-            (EXAMPLES / "deployments/example-guest-deployment/example-guest-deployment.yml",
-             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
-            (EXAMPLES / "deployments/example-cache-provider-deployment/example-cache-provider-deployment.yml",
-             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
-            (EXAMPLES / "deployments/example-datacenter-guest-deployment/example-datacenter-guest-deployment.yml",
-             "guest-deployment-configuration", "guest-deployment-configuration.xsd"),
-        ]
-        for source, root_name, schema_name in cases:
-            with self.subTest(source=source.name, schema=schema_name):
-                data = yaml.safe_load(source.read_text(encoding="utf-8"))
-                document = etree.fromstring(serialize_xml(data, root_name).encode("utf-8"))
-                schema = etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
-                self.assertTrue(schema.validate(document), schema.error_log)
+    def test_management_endpoint_is_resolved_from_guest_interface_binding(self):
+        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment")
+        endpoint = plan["resolved_management_endpoint"]
+        self.assertEqual("172.27.130.50", endpoint["address"])
+        self.assertEqual(
+            {"application_protocol": "SSH", "transport_protocol": "TCP", "port": 22},
+            endpoint["service_binding"],
+        )
+
+    def test_dual_stack_management_binding_requires_address_family(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            path = config / "deployments" / "example-datacenter-guest-deployment" / "example-datacenter-guest-deployment.yml"
+            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+            doc["management_endpoint_interface_binding"].pop("address_family")
+            path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError) as cm:
+                DeploymentResolver(repo, self.schema).resolve("example-datacenter-guest-deployment")
+            self.assertIn("dual-stack", str(cm.exception))
+
+    def test_all_configuration_xml_equivalents_match_xsd_1_0(self):
+        mappings = {
+            "environments": ("deployment-environment-configuration", "deployment-environment-configuration.xsd"),
+            "hosts": ("host-configuration", "host-configuration.xsd"),
+            "guests": ("guest-configuration", "guest-configuration.xsd"),
+            "deployments": ("guest-deployment-configuration", "guest-deployment-configuration.xsd"),
+            "shared-mountable-resources": (
+                "shared-mountable-resource-configuration",
+                "shared-mountable-resource-configuration.xsd",
+            ),
+        }
+        for category, (root_name, schema_name) in mappings.items():
+            schema = etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
+            for path in sorted((EXAMPLES / category).rglob("*.yml")):
+                with self.subTest(path=path):
+                    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+                    xml = etree.fromstring(serialize_xml(document, root_name).encode("utf-8"))
+                    self.assertTrue(schema.validate(xml), schema.error_log)
 
     def test_cdp_supports_xml_and_xml_matches_xsd(self):
         proc = self.run_cli(

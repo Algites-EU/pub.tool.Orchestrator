@@ -18,6 +18,7 @@ required:
   - host
   - compute
   - network_interfaces
+  - management_endpoint_interface_binding
   - mountable_resources
 properties:
 
@@ -104,6 +105,14 @@ properties:
               type: string
               minLength: 1
               description: Optional stable guest MAC address.
+
+  management_endpoint_interface_binding:
+    $ref: "common.schema.yml#/$defs/NetworkServiceInterfaceBinding"
+    description: >
+      Guest management service bound to one logical guest network interface. The
+      concrete endpoint address is resolved from that interface and appears in
+      DeploymentPlan.resolved_management_endpoint. Guest management operations are
+      expected to be executed through/from the deployment host.
 
   mountable_resources:
     type: object

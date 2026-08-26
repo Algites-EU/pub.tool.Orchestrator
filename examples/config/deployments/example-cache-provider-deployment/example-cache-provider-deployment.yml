@@ -24,6 +24,14 @@ network_interfaces:
       host_network: vm
       ipv4: 172.27.122.40
 
+management_endpoint_interface_binding:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  network_interface: primary
+  address_family: IPV4
+
 mountable_resources:
   description: Concrete mountable-resource bindings.
   items:

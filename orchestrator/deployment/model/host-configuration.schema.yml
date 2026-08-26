@@ -13,6 +13,7 @@ required:
   - model_version
   - environment
   - host
+  - management_endpoint
   - storage_devices
   - storage_controllers
   - storage_targets
@@ -36,6 +37,12 @@ properties:
         description: Host id that must exist in environment.hosts.
       display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
       description: { $ref: "common.schema.yml#/$defs/Description" }
+  management_endpoint:
+    $ref: "common.schema.yml#/$defs/NetworkServiceEndpoint"
+    description: >
+      Management service endpoint used by the Ansible control node to reach this
+      deployment host. Authentication material is intentionally not part of this
+      model.
   storage_devices:
     type: object
     description: >

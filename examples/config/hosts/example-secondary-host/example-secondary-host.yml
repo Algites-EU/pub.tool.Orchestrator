@@ -8,6 +8,13 @@ host:
     Datacenter deployment host demonstrating implicit host-local storage together
     with a persistent external SAN storage system.
 
+management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 192.0.2.11
+
 storage_devices:
   local-ssd:
     display_name: Local SSD

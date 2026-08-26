@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
-  <xs:annotation>
-    <xs:documentation>
-      Shared XML Schema types for Algites Orchestrator deployment model version 1.
-      The XML representation is the deterministic object-to-element mapping used by
-      the Orchestrator XML serializer. Dynamic identifier-keyed maps are represented
-      by dynamically named XML child elements; XSD 1.0 cannot apply one complex type
-      to arbitrary child element names, therefore map containers use xs:any while the
-      Orchestrator performs the full identifier and cross-configuration validation.
-    </xs:documentation>
-  </xs:annotation>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="1.0">
+  <!--
+    XSD 1.0 companion vocabulary for the Algites Orchestrator deployment model.
+    Fixed structures, scalar constraints and enums are represented directly.
+    Maps whose keys are configuration identifiers are represented by DynamicMapType
+    because XSD 1.0 cannot assign one declared complex type to arbitrary element
+    names. Full map-entry and cross-entity semantics are enforced by the
+    Orchestrator validator.
+  -->
 
   <xs:simpleType name="IdentifierType">
     <xs:restriction base="xs:string">
@@ -24,9 +22,7 @@
   </xs:simpleType>
 
   <xs:simpleType name="NonEmptyStringType">
-    <xs:restriction base="xs:string">
-      <xs:minLength value="1"/>
-    </xs:restriction>
+    <xs:restriction base="xs:string"><xs:minLength value="1"/></xs:restriction>
   </xs:simpleType>
 
   <xs:simpleType name="DataSizeType">
@@ -35,96 +31,18 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="MountableResourceStorageClassType">
+  <xs:simpleType name="TransportProtocolType">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="DISPOSABLE"/>
-      <xs:enumeration value="PERSISTENT"/>
-      <xs:enumeration value="ARCHIVE"/>
+      <xs:enumeration value="TCP"/>
+      <xs:enumeration value="UDP"/>
+      <xs:enumeration value="SCTP"/>
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="MountableResourcePurposeType">
+  <xs:simpleType name="AddressFamilyType">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="SYSTEM"/>
-      <xs:enumeration value="DATA"/>
-      <xs:enumeration value="CACHE"/>
-      <xs:enumeration value="BACKUP"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceRepresentationType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="BLOCK"/>
-      <xs:enumeration value="FILESYSTEM"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceAccessModeType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="RO"/>
-      <xs:enumeration value="RW"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceSharingModeType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="EXCLUSIVE"/>
-      <xs:enumeration value="SHARED"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceInterfaceType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="SAMBA"/>
-      <xs:enumeration value="NFS"/>
-      <xs:enumeration value="VIRTIOFS"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceBackendType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="QCOW2"/>
-      <xs:enumeration value="RAW_FILE"/>
-      <xs:enumeration value="LVM"/>
-      <xs:enumeration value="DIRECTORY"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceRelationRequirementType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="REQUIRED"/>
-      <xs:enumeration value="PREFERRED"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="MountableResourceRelationType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="NO_SHARED_DEVICE"/>
-      <xs:enumeration value="NO_SHARED_CONTROLLER"/>
-      <xs:enumeration value="NO_SHARED_STORAGE_SYSTEM"/>
-      <xs:enumeration value="NO_SHARED_HOST"/>
-      <xs:enumeration value="NO_SHARED_SITE"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="HostStorageDeviceType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="PHYSICAL_DISK"/>
-      <xs:enumeration value="PARTITION"/>
-      <xs:enumeration value="RAID"/>
-      <xs:enumeration value="LVM_PV"/>
-      <xs:enumeration value="LVM_VG"/>
-      <xs:enumeration value="LVM_LV"/>
-      <xs:enumeration value="OTHER"/>
-    </xs:restriction>
-  </xs:simpleType>
-
-  <xs:simpleType name="HostNetworkModeType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="ISOLATED"/>
-      <xs:enumeration value="NAT"/>
-      <xs:enumeration value="ROUTED"/>
-      <xs:enumeration value="BRIDGED"/>
+      <xs:enumeration value="IPV4"/>
+      <xs:enumeration value="IPV6"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -137,6 +55,46 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <xs:simpleType name="StorageClassType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DISPOSABLE"/>
+      <xs:enumeration value="PERSISTENT"/>
+      <xs:enumeration value="ARCHIVE"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RepresentationType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="BLOCK"/>
+      <xs:enumeration value="FILESYSTEM"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BackendType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="QCOW2"/>
+      <xs:enumeration value="RAW_FILE"/>
+      <xs:enumeration value="LVM"/>
+      <xs:enumeration value="DIRECTORY"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AccessModeType">
+    <xs:restriction base="xs:string"><xs:enumeration value="RO"/><xs:enumeration value="RW"/></xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SharingModeType">
+    <xs:restriction base="xs:string"><xs:enumeration value="EXCLUSIVE"/><xs:enumeration value="SHARED"/></xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="InterfaceType">
+    <xs:restriction base="xs:string"><xs:enumeration value="SAMBA"/><xs:enumeration value="NFS"/><xs:enumeration value="VIRTIOFS"/></xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HostNetworkModeType">
+    <xs:restriction base="xs:string"><xs:enumeration value="NAT"/><xs:enumeration value="ROUTED"/><xs:enumeration value="BRIDGED"/><xs:enumeration value="ISOLATED"/></xs:restriction>
+  </xs:simpleType>
+
   <xs:complexType name="EntityIdentityType">
     <xs:all>
       <xs:element name="id" type="IdentifierType"/>
@@ -145,106 +103,45 @@
     </xs:all>
   </xs:complexType>
 
-  <xs:complexType name="DataSizeConstraintType">
+  <xs:complexType name="NetworkServiceBindingType">
     <xs:all>
-      <xs:element name="minimum" type="DataSizeType" minOccurs="0"/>
-      <xs:element name="default" type="DataSizeType" minOccurs="0"/>
+      <xs:element name="application_protocol" type="IdentifierType"/>
+      <xs:element name="transport_protocol" type="TransportProtocolType"/>
+      <xs:element name="port">
+        <xs:simpleType><xs:restriction base="xs:positiveInteger"><xs:maxInclusive value="65535"/></xs:restriction></xs:simpleType>
+      </xs:element>
     </xs:all>
   </xs:complexType>
 
-  <xs:complexType name="IdentifierListType">
-    <xs:sequence>
-      <xs:element name="item" type="IdentifierType" minOccurs="1" maxOccurs="unbounded"/>
-    </xs:sequence>
+  <xs:complexType name="NetworkServiceEndpointType">
+    <xs:all>
+      <xs:element name="service_binding" type="NetworkServiceBindingType"/>
+      <xs:element name="address" type="NonEmptyStringType"/>
+    </xs:all>
   </xs:complexType>
 
-  <xs:complexType name="IdentifierListTwoOrMoreType">
-    <xs:sequence>
-      <xs:element name="item" type="IdentifierType" minOccurs="2" maxOccurs="unbounded"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="RelationTypeListType">
-    <xs:sequence>
-      <xs:element name="item" type="MountableResourceRelationType" minOccurs="1" maxOccurs="unbounded"/>
-    </xs:sequence>
+  <xs:complexType name="NetworkServiceInterfaceBindingType">
+    <xs:all>
+      <xs:element name="service_binding" type="NetworkServiceBindingType"/>
+      <xs:element name="network_interface" type="IdentifierType"/>
+      <xs:element name="address_family" type="AddressFamilyType" minOccurs="0"/>
+    </xs:all>
   </xs:complexType>
 
   <xs:complexType name="DynamicMapType">
     <xs:sequence>
-      <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+      <xs:any namespace="##local" minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
     </xs:sequence>
   </xs:complexType>
 
-  <xs:complexType name="DynamicMapOneOrMoreType">
-    <xs:sequence>
-      <xs:any minOccurs="1" maxOccurs="unbounded" processContents="skip"/>
-    </xs:sequence>
+  <xs:complexType name="StringListType">
+    <xs:sequence><xs:element name="item" type="xs:string" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
   </xs:complexType>
 
-  <xs:complexType name="MountableResourceType">
+  <xs:complexType name="DescribedItemsType">
     <xs:all>
-      <xs:element name="display_name" type="NonEmptyStringType"/>
       <xs:element name="description" type="NonEmptyStringType"/>
-      <xs:element name="storage_class" type="MountableResourceStorageClassType"/>
-      <xs:element name="purpose" type="MountableResourcePurposeType"/>
-      <xs:element name="representation" type="MountableResourceRepresentationType"/>
-      <xs:element name="access" type="MountableResourceAccessModeType"/>
-      <xs:element name="sharing" type="MountableResourceSharingModeType"/>
-      <xs:element name="mount_point" type="NonEmptyStringType"/>
-      <xs:element name="capacity" type="DataSizeConstraintType" minOccurs="0"/>
-      <xs:element name="required_interface" type="MountableResourceInterfaceType" minOccurs="0"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="MountableResourceRelationConfigurationType">
-    <xs:all>
-      <xs:element name="display_name" type="NonEmptyStringType"/>
-      <xs:element name="description" type="NonEmptyStringType"/>
-      <xs:element name="mountable_resources" type="IdentifierListTwoOrMoreType"/>
-      <xs:element name="relations" type="RelationTypeListType"/>
-      <xs:element name="requirement" type="MountableResourceRelationRequirementType"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="BackendConfigurationType">
-    <xs:all>
-      <xs:element name="type" type="MountableResourceBackendType"/>
-      <xs:element name="description" type="NonEmptyStringType"/>
-      <xs:element name="directory" type="NonEmptyStringType" minOccurs="0"/>
-      <xs:element name="volume_group" type="NonEmptyStringType" minOccurs="0"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="BackendConfigurationListType">
-    <xs:sequence>
-      <xs:element name="item" type="BackendConfigurationType" minOccurs="1" maxOccurs="unbounded"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="HostStorageTargetRepresentationType">
-    <xs:all>
-      <xs:element name="type" type="MountableResourceRepresentationType"/>
-      <xs:element name="description" type="NonEmptyStringType"/>
-      <xs:element name="supported_backends" type="BackendConfigurationListType"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="HostStorageTargetRepresentationListType">
-    <xs:sequence>
-      <xs:element name="item" type="HostStorageTargetRepresentationType" minOccurs="1" maxOccurs="unbounded"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="HostStorageTargetType">
-    <xs:all>
-      <xs:element name="display_name" type="NonEmptyStringType"/>
-      <xs:element name="description" type="NonEmptyStringType"/>
-      <xs:element name="storage_class" type="MountableResourceStorageClassType"/>
-      <xs:element name="storage_system" type="IdentifierType"/>
-      <xs:element name="impacted_devices" type="IdentifierListType" minOccurs="0"/>
-      <xs:element name="impacted_controllers" type="IdentifierListType" minOccurs="0"/>
-      <xs:element name="supported_representations" type="HostStorageTargetRepresentationListType"/>
+      <xs:element name="items" type="DynamicMapType"/>
     </xs:all>
   </xs:complexType>
 </xs:schema>

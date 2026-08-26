@@ -16,6 +16,12 @@ resolved_network_interfaces:
     host_network: vm
     ipv4: 10.60.0.50
     ipv6: fd60::50
+resolved_management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 10.60.0.50
 resolved_mountable_resources:
   system-root:
     display_name: System Root

@@ -1,56 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
-  <xs:simpleType name="DataSize">
-    <xs:restriction base="xs:string">
-      <xs:pattern value="[1-9][0-9]*(B|kB|MB|GB|TB|PB|KiB|MiB|GiB|TiB|PiB)"/>
-    </xs:restriction>
-  </xs:simpleType>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="1.0">
+  <xs:include schemaLocation="common.xsd"/>
 
   <xs:complexType name="ResolvedComputeType">
-    <xs:sequence>
+    <xs:all>
       <xs:element name="cpu" type="xs:positiveInteger"/>
-      <xs:element name="memory" type="DataSize"/>
-    </xs:sequence>
+      <xs:element name="memory" type="DataSizeType"/>
+    </xs:all>
   </xs:complexType>
 
   <xs:complexType name="ResolvedOsType">
-    <xs:sequence>
-      <xs:element name="type">
-        <xs:simpleType>
-          <xs:restriction base="xs:string">
-            <xs:enumeration value="NIXOS"/>
-            <xs:enumeration value="LINUX"/>
-            <xs:enumeration value="WINDOWS"/>
-            <xs:enumeration value="MACOS"/>
-          </xs:restriction>
-        </xs:simpleType>
-      </xs:element>
-      <xs:element name="configuration_path" type="xs:string" minOccurs="0"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="DynamicMapType">
-    <xs:sequence>
-      <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="StringListType">
-    <xs:sequence>
-      <xs:element name="item" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-    </xs:sequence>
+    <xs:all>
+      <xs:element name="type" type="GuestOsType"/>
+      <xs:element name="configuration_path" type="NonEmptyStringType" minOccurs="0"/>
+    </xs:all>
   </xs:complexType>
 
   <xs:complexType name="RelationResultType">
-    <xs:sequence>
-      <xs:element name="display_name" type="xs:string"/>
-      <xs:element name="description" type="xs:string"/>
+    <xs:all>
+      <xs:element name="display_name" type="NonEmptyStringType"/>
+      <xs:element name="description" type="NonEmptyStringType"/>
       <xs:element name="mountable_resources" type="StringListType"/>
       <xs:element name="relations" type="StringListType"/>
-      <xs:element name="requirement" type="xs:string"/>
+      <xs:element name="requirement" type="NonEmptyStringType"/>
       <xs:element name="satisfied" type="xs:boolean"/>
       <xs:element name="message" type="xs:string" minOccurs="0"/>
-    </xs:sequence>
+    </xs:all>
   </xs:complexType>
 
   <xs:complexType name="RelationResultsType">
@@ -60,20 +35,19 @@
   </xs:complexType>
 
   <xs:element name="deployment-plan">
-    <xs:complexType>
-      <xs:sequence>
-        <xs:element name="model_version" type="xs:positiveInteger"/>
-        <xs:element name="deployment" type="xs:string"/>
-        <xs:element name="guest" type="xs:string"/>
-        <xs:element name="host" type="xs:string"/>
-        <xs:element name="environment" type="xs:string"/>
-        <xs:element name="resolved_os" type="ResolvedOsType"/>
-        <xs:element name="resolved_compute" type="ResolvedComputeType"/>
-        <xs:element name="resolved_network_interfaces" type="DynamicMapType"/>
-        <xs:element name="resolved_mountable_resources" type="DynamicMapType"/>
-        <xs:element name="relation_results" type="RelationResultsType"/>
-        <xs:element name="warnings" type="StringListType"/>
-      </xs:sequence>
-    </xs:complexType>
+    <xs:complexType><xs:all>
+      <xs:element name="model_version" type="xs:positiveInteger"/>
+      <xs:element name="deployment" type="ConfigurationReferenceType"/>
+      <xs:element name="guest" type="ConfigurationReferenceType"/>
+      <xs:element name="host" type="ConfigurationReferenceType"/>
+      <xs:element name="environment" type="ConfigurationReferenceType"/>
+      <xs:element name="resolved_os" type="ResolvedOsType"/>
+      <xs:element name="resolved_compute" type="ResolvedComputeType"/>
+      <xs:element name="resolved_network_interfaces" type="DynamicMapType"/>
+      <xs:element name="resolved_management_endpoint" type="NetworkServiceEndpointType"/>
+      <xs:element name="resolved_mountable_resources" type="DynamicMapType"/>
+      <xs:element name="relation_results" type="RelationResultsType"/>
+      <xs:element name="warnings" type="StringListType"/>
+    </xs:all></xs:complexType>
   </xs:element>
 </xs:schema>

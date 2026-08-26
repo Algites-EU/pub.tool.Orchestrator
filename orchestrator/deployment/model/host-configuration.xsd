@@ -1,37 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="1.0">
   <xs:include schemaLocation="common.xsd"/>
-
-  <xs:complexType name="FilesystemInterfaceDefaultsType">
-    <xs:all>
-      <xs:element name="NIXOS" type="IdentifierType" minOccurs="0"/>
-      <xs:element name="LINUX" type="IdentifierType" minOccurs="0"/>
-      <xs:element name="WINDOWS" type="IdentifierType" minOccurs="0"/>
-      <xs:element name="MACOS" type="IdentifierType" minOccurs="0"/>
-    </xs:all>
-  </xs:complexType>
-
-  <xs:complexType name="HostDefaultsType">
-    <xs:all>
-      <xs:element name="filesystem_interface_by_guest_os" type="FilesystemInterfaceDefaultsType"/>
-    </xs:all>
-  </xs:complexType>
-
   <xs:element name="host-configuration">
-    <xs:complexType>
-      <xs:all>
-        <xs:element name="model_version">
-          <xs:simpleType><xs:restriction base="xs:positiveInteger"><xs:enumeration value="1"/></xs:restriction></xs:simpleType>
-        </xs:element>
-        <xs:element name="environment" type="ConfigurationReferenceType"/>
-        <xs:element name="host" type="EntityIdentityType"/>
-        <xs:element name="storage_devices" type="DynamicMapType"/>
-        <xs:element name="storage_controllers" type="DynamicMapType"/>
-        <xs:element name="storage_targets" type="DynamicMapOneOrMoreType"/>
-        <xs:element name="networks" type="DynamicMapType"/>
-        <xs:element name="mountable_resource_interfaces" type="DynamicMapType"/>
-        <xs:element name="defaults" type="HostDefaultsType"/>
-      </xs:all>
-    </xs:complexType>
+    <xs:complexType><xs:all>
+      <xs:element name="model_version" type="xs:positiveInteger"/>
+      <xs:element name="environment" type="ConfigurationReferenceType"/>
+      <xs:element name="host" type="EntityIdentityType"/>
+      <xs:element name="management_endpoint" type="NetworkServiceEndpointType"/>
+      <xs:element name="storage_devices" type="DynamicMapType"/>
+      <xs:element name="storage_controllers" type="DynamicMapType"/>
+      <xs:element name="storage_targets" type="DynamicMapType"/>
+      <xs:element name="networks" type="DynamicMapType"/>
+      <xs:element name="mountable_resource_interfaces" type="DynamicMapType"/>
+      <xs:element name="defaults" type="DynamicMapType"/>
+    </xs:all></xs:complexType>
   </xs:element>
 </xs:schema>

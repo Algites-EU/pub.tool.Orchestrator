@@ -93,6 +93,7 @@ A `Site` represents a physical failure boundary such as a home, office, server r
 It currently contains:
 
 - host identity and environment binding,
+- a concrete management network-service endpoint for control-node access,
 - local physical/logical storage-device topology,
 - storage-controller topology,
 - `HostStorageTarget`s,
@@ -207,6 +208,7 @@ It supplies values that belong to the deployment rather than the reusable guest 
 - concrete CPU allocation,
 - concrete memory allocation,
 - concrete host-network bindings,
+- a management network-service binding to one logical guest interface,
 - IPv4 and/or IPv6 addresses,
 - concrete storage sizes where applicable,
 - direct `HostStorageTarget` bindings,
@@ -774,52 +776,108 @@ Relations containing more than two resources are evaluated pairwise across the c
 
 ## Network Model
 
-`GuestConfiguration` declares named logical network interfaces without binding them to host-specific networks.
+`GuestConfiguration` declares named logical network interfaces without binding
+them to host-specific networks.
 
 Example:
 
 ```yaml
 network_interfaces:
   items:
-
     primary:
       description: Primary application network.
       required: true
-
     management:
       description: Optional management network.
       required: false
 ```
 
-`GuestDeploymentConfiguration` binds those interfaces to concrete host networks and assigns addresses.
-
-IPv4 and IPv6 are supported independently and can be used together for dual-stack interfaces.
-
-Example:
+`GuestDeploymentConfiguration` binds those interfaces to concrete host networks
+and assigns IPv4 and/or IPv6 addresses.
 
 ```yaml
 network_interfaces:
   items:
-
-    primary:
-      host_network: vm
-      ipv4: 172.27.122.50
-      ipv6: fd27:122::50
+    management:
+      host_network: private-management
+      ipv4: 172.27.130.50
 ```
 
-Host networks currently support:
+Network services use three reusable common structures:
+
+```text
+NetworkServiceBinding
+    application_protocol
+    transport_protocol
+    port
+
+NetworkServiceEndpoint
+    service_binding
+    address
+
+NetworkServiceInterfaceBinding
+    service_binding
+    network_interface
+    address_family (optional)
+```
+
+`application_protocol` is an extensible symbolic identifier rather than a closed
+enum. `transport_protocol` is explicit (`TCP`, `UDP` or `SCTP`) and `port` is also
+explicit. Tooling may suggest conventional values such as SSH/TCP/22, but those
+values remain visible configuration data. This also gives the execution layer
+enough transport information to derive firewall requirements without encoding
+firewall implementation details in guest configuration.
+
+A deployment host has a concrete endpoint because the control node must know how
+to reach it:
 
 ```yaml
-subnet: 172.27.122.0/24
-gateway: 172.27.122.1
-
-ipv6_subnet: fd27:122::/64
-ipv6_gateway: fd27:122::1
+management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 192.0.2.10
 ```
 
-A host network may therefore be IPv4-only, IPv6-only, or dual-stack as allowed by its concrete configuration.
+A guest deployment instead binds its management service to a logical guest
+interface so the IP address is not duplicated:
 
-Network implementation details such as libvirt bridge names and network mode belong to `HostConfiguration`.
+```yaml
+management_endpoint_interface_binding:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  network_interface: management
+  address_family: IPV4
+```
+
+The resolver combines the interface binding with the resolved interface address
+and writes a concrete endpoint to the DeploymentPlan:
+
+```yaml
+resolved_management_endpoint:
+  service_binding:
+    application_protocol: SSH
+    transport_protocol: TCP
+    port: 22
+  address: 172.27.130.50
+```
+
+`address_family` may be omitted when the selected interface has an address in
+exactly one IP family. A dual-stack interface requires `IPV4` or `IPV6` explicitly
+so the resolver never guesses which management address to use.
+
+The intended execution topology is that the Ansible control node reaches the
+deployment host through `HostConfiguration.management_endpoint`; guest-side
+management (for example a NixOS update over SSH) is then performed through/from
+that deployment host. The guest management network therefore need not be routed
+or exposed to the control node or other external systems.
+
+Host networks may be IPv4-only, IPv6-only or dual-stack. Network implementation
+details such as libvirt bridge names and network mode remain in
+`HostConfiguration`.
 
 ---
 
@@ -1120,7 +1178,7 @@ Directly sharing `/nix/store` between guests is not the intended Nix caching mod
 
 ## Model Files
 
-The Deployment model is defined by authoritative JSON Schema documents written in YAML syntax, with a parallel XML Schema representation.
+The Deployment model is defined by JSON Schema documents written in YAML syntax.
 
 Conceptually:
 
@@ -1130,20 +1188,20 @@ orchestrator/deployment/
 ├── model/
 │   ├── model.yml
 │   ├── common.schema.yml
-│   ├── common.xsd
 │   ├── deployment-environment-configuration.schema.yml
-│   ├── deployment-environment-configuration.xsd
 │   ├── host-configuration.schema.yml
-│   ├── host-configuration.xsd
 │   ├── guest-configuration.schema.yml
-│   ├── guest-configuration.xsd
 │   ├── shared-mountable-resource-configuration.schema.yml
-│   ├── shared-mountable-resource-configuration.xsd
 │   ├── guest-deployment-configuration.schema.yml
-│   ├── guest-deployment-configuration.xsd
 │   ├── deployment-plan.schema.yml
-│   ├── deployment-plan.xsd
 │   ├── deployment-bundle-manifest.schema.yml
+│   ├── common.xsd
+│   ├── deployment-environment-configuration.xsd
+│   ├── host-configuration.xsd
+│   ├── guest-configuration.xsd
+│   ├── shared-mountable-resource-configuration.xsd
+│   ├── guest-deployment-configuration.xsd
+│   ├── deployment-plan.xsd
 │   ├── deployment-bundle-manifest.xsd
 │   └── validation-report.xsd
 ├── config/
@@ -1155,7 +1213,7 @@ orchestrator/deployment/
 └── example-plans/
 ```
 
-The YAML/JSON Schemas are the authoritative definition of the current configuration input shape. A parallel XSD set describes the deterministic XML representation of the same model structures and CLI outputs. Because identifier-keyed mappings become dynamically named XML elements, XSD 1.0 cannot express every map-entry constraint as precisely as JSON Schema; complete semantic validation remains the responsibility of the Orchestrator. This README explains the intended architecture and semantics.
+The JSON Schemas are the authoritative machine-readable definition of the YAML/JSON object shape. The XSD 1.0 files are the companion XML schema layer for the same structures. XSD 1.0 is intentionally used for broad tool compatibility; identifier-keyed dynamic maps are validated less strictly by XSD and receive their full semantic validation from the Orchestrator validator. This README explains the intended architecture and semantics.
 
 ---
 

@@ -17,6 +17,7 @@ required:
   - resolved_os
   - resolved_compute
   - resolved_network_interfaces
+  - resolved_management_endpoint
   - resolved_mountable_resources
   - relation_results
   - warnings
@@ -57,6 +58,12 @@ properties:
         display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
         description: { $ref: "common.schema.yml#/$defs/Description" }
         host_network: { $ref: "common.schema.yml#/$defs/Identifier" }
+  resolved_management_endpoint:
+    $ref: "common.schema.yml#/$defs/NetworkServiceEndpoint"
+    description: >
+      Concrete guest management endpoint resolved from the guest deployment
+      interface binding. The execution layer reaches this endpoint through/from
+      the deployment host rather than requiring direct control-node routing.
   resolved_mountable_resources:
     type: object
     propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }

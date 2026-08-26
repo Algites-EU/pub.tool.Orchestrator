@@ -253,6 +253,75 @@ $defs:
       - const: BRIDGED
         description: Guest interfaces are bridged to an external layer-2 network.
 
+
+  NetworkServiceApplicationProtocol:
+    title: NetworkServiceApplicationProtocol
+    description: >
+      Extensible symbolic identifier of an application-level network protocol or
+      service such as SSH, HTTPS or DNS. The value is intentionally not a closed
+      enum so private and future application protocols can be represented without
+      changing the deployment model.
+    $ref: "#/$defs/Identifier"
+
+  NetworkServiceTransportProtocol:
+    title: NetworkServiceTransportProtocol
+    description: Transport protocol used by one concrete network-service binding.
+    oneOf:
+      - const: TCP
+      - const: UDP
+      - const: SCTP
+
+  NetworkServiceBinding:
+    title: NetworkServiceBinding
+    description: >
+      One concrete binding of an application protocol to a transport protocol and
+      port. All three values are explicit configuration data; tooling may suggest
+      conventional defaults but the resolver does not silently infer them.
+    type: object
+    additionalProperties: false
+    required: [application_protocol, transport_protocol, port]
+    properties:
+      application_protocol: { $ref: "#/$defs/NetworkServiceApplicationProtocol" }
+      transport_protocol: { $ref: "#/$defs/NetworkServiceTransportProtocol" }
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+
+  NetworkServiceEndpoint:
+    title: NetworkServiceEndpoint
+    description: >
+      Concrete reachable network-service endpoint with an explicit service binding
+      and resolved address. The address may be an IPv4 address, IPv6 address or a
+      resolvable host name understood by the execution environment.
+    type: object
+    additionalProperties: false
+    required: [service_binding, address]
+    properties:
+      service_binding: { $ref: "#/$defs/NetworkServiceBinding" }
+      address:
+        type: string
+        minLength: 1
+
+  NetworkServiceInterfaceBinding:
+    title: NetworkServiceInterfaceBinding
+    description: >
+      Binds a NetworkServiceBinding to a logical guest network interface without
+      duplicating the interface address. The resolver converts it to a concrete
+      NetworkServiceEndpoint. address_family is optional when the selected
+      interface has exactly one configured IP family and required to disambiguate
+      a dual-stack interface.
+    type: object
+    additionalProperties: false
+    required: [service_binding, network_interface]
+    properties:
+      service_binding: { $ref: "#/$defs/NetworkServiceBinding" }
+      network_interface: { $ref: "#/$defs/Identifier" }
+      address_family:
+        oneOf:
+          - const: IPV4
+          - const: IPV6
+
   GuestOsType:
     title: GuestOsType
     description: Guest operating-system family used for deployment behavior and host defaults.

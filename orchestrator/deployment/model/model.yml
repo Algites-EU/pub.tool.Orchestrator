@@ -1,7 +1,11 @@
 model_version: 1
-description: Registry of the YAML/JSON Schema and XML Schema documents that define version 1 of the Algites
-  Orchestrator deployment model. The model version intentionally remains 1 throughout initial development
-  and will only be incremented after a released model requires a compatibility-breaking successor.
+
+description: >
+  Registry of the YAML/JSON Schema documents that define version 1 of the
+  Algites Orchestrator deployment model. The model version intentionally remains
+  1 throughout initial development and will only be incremented after a released
+  model requires a compatibility-breaking successor.
+
 schemas:
   common: common.schema.yml
   deployment_environment_configuration: deployment-environment-configuration.schema.yml
@@ -11,6 +15,7 @@ schemas:
   guest_deployment_configuration: guest-deployment-configuration.schema.yml
   deployment_plan: deployment-plan.schema.yml
   deployment_bundle_manifest: deployment-bundle-manifest.schema.yml
+
 xml_schemas:
   common: common.xsd
   deployment_environment_configuration: deployment-environment-configuration.xsd

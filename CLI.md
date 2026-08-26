@@ -559,8 +559,8 @@ becomes:
 </resolved_compute>
 ```
 
-The deployment model ships a parallel XSD set for the XML representation of all
-model structures:
+The model ships an XSD 1.0 companion schema set for all deployment-model
+structures:
 
 ```text
 orchestrator/deployment/model/common.xsd
@@ -574,22 +574,16 @@ orchestrator/deployment/model/deployment-bundle-manifest.xsd
 orchestrator/deployment/model/validation-report.xsd
 ```
 
-`common.xsd` contains the shared identifiers, configuration references, data
-sizes, enums and common complex types used by the entity-specific XSD files.
-The configuration XSDs describe the XML equivalent of the same structures that
-are authoritative as YAML/JSON Schema configuration in model version 1. The CLI
-does not yet load XML configuration files as input; the XSDs exist for external
-analysis, interchange tooling and format-independent model inspection.
+The XSD files use the same deterministic XML representation as CLI XML output.
+Input configuration remains YAML-based in model version 1; configuration XSDs
+are companion XML schemas for tooling, analysis and interchange rather than an
+alternative CLI configuration-input syntax.
 
-There is one XSD 1.0 limitation worth making explicit. Identifier-keyed maps are
-serialized using the identifiers themselves as XML element names (for example
-`<primary>` or `<persistent-nvme>`). XSD 1.0 cannot assign one complex type to
-arbitrarily named child elements, so those dynamic map containers use an XML
-wildcard. Fixed structure, scalar types and enums are still validated by XSD,
-while complete map-entry and cross-reference semantics are validated by the
-Orchestrator's YAML/JSON Schema and resolver/validation layers. This preserves a
-single deterministic XML representation instead of introducing a different
-`<item id="...">` encoding only for XML.
+XSD 1.0 is used deliberately for broad IDE/tool compatibility. Because XSD 1.0
+cannot assign a declared complex type to an arbitrary element name used as a
+dynamic map key, identifier-keyed map containers are necessarily less strict in
+XSD than in the JSON Schemas. Full map-entry, cross-field and cross-entity
+semantics are enforced by the Orchestrator validator.
 
 ## 12. Result output versus diagnostic output
 

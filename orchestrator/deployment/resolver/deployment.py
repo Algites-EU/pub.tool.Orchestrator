@@ -42,6 +42,7 @@ class DeploymentResolver:
         self._validate_guest(guest, guest_entry)
         self._validate_compute(deployment, guest)
         resolved_networks = self._resolve_networks(deployment, guest, host)
+        resolved_management_endpoint = self._resolve_management_endpoint(deployment, resolved_networks)
         resolved_resources, facts = self._resolve_resources(
             deployment_entry, deployment, guest, host_entry, host, environment_entry, environment
         )
@@ -60,6 +61,7 @@ class DeploymentResolver:
             "resolved_os": resolved_os,
             "resolved_compute": self._resolve_compute(deployment, guest),
             "resolved_network_interfaces": resolved_networks,
+            "resolved_management_endpoint": resolved_management_endpoint,
             "resolved_mountable_resources": resolved_resources,
             "relation_results": relation_results,
             "warnings": warnings,
@@ -216,6 +218,43 @@ class DeploymentResolver:
                     resolved[key] = binding[key]
             result[interface_id] = resolved
         return result
+
+    @staticmethod
+    def _resolve_management_endpoint(
+        deployment: dict[str, Any], resolved_networks: dict[str, Any]
+    ) -> dict[str, Any]:
+        binding = deployment["management_endpoint_interface_binding"]
+        interface_id = binding["network_interface"]
+        if interface_id not in resolved_networks:
+            raise ConfigurationValidationError(
+                f"Management endpoint interface binding references unknown or unresolved network interface '{interface_id}'."
+            )
+        interface = resolved_networks[interface_id]
+        family = binding.get("address_family")
+        if family is not None:
+            address_field = {"IPV4": "ipv4", "IPV6": "ipv6"}[family]
+            address = interface.get(address_field)
+            if address is None:
+                raise ConfigurationValidationError(
+                    f"Management endpoint interface binding requests {family} from network interface "
+                    f"'{interface_id}', but that interface has no {address_field} address."
+                )
+        else:
+            addresses = [interface[field] for field in ("ipv4", "ipv6") if field in interface]
+            if not addresses:
+                raise ConfigurationValidationError(
+                    f"Management network interface '{interface_id}' has no configured IP address."
+                )
+            if len(addresses) > 1:
+                raise ConfigurationValidationError(
+                    f"Management network interface '{interface_id}' is dual-stack; "
+                    "management_endpoint_interface_binding.address_family must select IPV4 or IPV6."
+                )
+            address = addresses[0]
+        return {
+            "service_binding": dict(binding["service_binding"]),
+            "address": address,
+        }
 
     @staticmethod
     def _validate_ip_binding(interface_id: str, field: str, address: str | None, subnet: str | None, version: int) -> None:

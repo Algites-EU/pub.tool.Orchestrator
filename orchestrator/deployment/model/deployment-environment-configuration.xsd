@@ -1,18 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="1.0">
   <xs:include schemaLocation="common.xsd"/>
-
   <xs:element name="deployment-environment-configuration">
-    <xs:complexType>
-      <xs:all>
-        <xs:element name="model_version">
-          <xs:simpleType><xs:restriction base="xs:positiveInteger"><xs:enumeration value="1"/></xs:restriction></xs:simpleType>
-        </xs:element>
-        <xs:element name="environment" type="EntityIdentityType"/>
-        <xs:element name="sites" type="DynamicMapType"/>
-        <xs:element name="hosts" type="DynamicMapType"/>
-        <xs:element name="storage_systems" type="DynamicMapType"/>
-      </xs:all>
-    </xs:complexType>
+    <xs:complexType><xs:all>
+      <xs:element name="model_version" type="xs:positiveInteger"/>
+      <xs:element name="environment" type="EntityIdentityType"/>
+      <xs:element name="sites" type="DynamicMapType"/>
+      <xs:element name="hosts" type="DynamicMapType"/>
+      <xs:element name="storage_systems" type="DynamicMapType"/>
+    </xs:all></xs:complexType>
   </xs:element>
 </xs:schema>
