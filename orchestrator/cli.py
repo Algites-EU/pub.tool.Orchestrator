@@ -8,8 +8,9 @@ from pathlib import Path
 from orchestrator import __version__
 from orchestrator.common.configuration import ConfigurationCategory, ConfigurationRepository
 from orchestrator.common.errors import CliArgumentError, OrchestratorError
-from orchestrator.common.io import resolve_output_path, write_result
+from orchestrator.common.io import resolve_output_path, write_binary_result, write_result
 from orchestrator.common.logging import configure_processing_logger
+from orchestrator.deployment.bundle import DeploymentBundleBuilder
 from orchestrator.deployment.resolver import DeploymentResolver
 from orchestrator.deployment.validation import DeploymentConfigurationValidator, SchemaValidator
 
@@ -34,7 +35,7 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
         "--processing-info-file-name", "-pifn",
         help="Optional diagnostic log file; diagnostics are still written to stderr."
     )
-    parser.add_argument("--output-format", "-ofmt", choices=("yaml", "json"), default="yaml")
+    parser.add_argument("--output-format", "-ofmt", choices=("yaml", "json", "xml"), default="yaml")
     level_group = parser.add_mutually_exclusive_group()
     level_group.add_argument(
         "--log-level", "-ll", choices=("TRACE", "DEBUG", "INFO", "WARNING", "ERROR"),
@@ -52,6 +53,16 @@ def _build_parser() -> argparse.ArgumentParser:
     cdp = subparsers.add_parser("create-deployment-plan", aliases=["cdp"], help="Resolve one deployment into DeploymentPlan.")
     _add_common_options(cdp)
     cdp.add_argument("--deployment", "-d", required=True, help="Deployment configuration reference.")
+
+    cdb = subparsers.add_parser(
+        "create-deployment-bundle", aliases=["cdb"],
+        help="Create a portable ZIP with one or more DeploymentPlans and all required Configuration Entity Packages."
+    )
+    _add_common_options(cdb)
+    cdb.add_argument(
+        "--deployment", "-d", required=True, action="append",
+        help="Deployment configuration reference. Repeat the option to include multiple deployments."
+    )
 
     vc = subparsers.add_parser("validate-configuration", aliases=["vc"], help="Validate configuration root or one deployment closure.")
     _add_common_options(vc)
@@ -103,6 +114,16 @@ def main(argv: list[str] | None = None) -> int:
             logger.info("Resolving deployment '%s'.", args.deployment)
             result = resolver.resolve(args.deployment)
             logger.info("Deployment plan resolved successfully for '%s'.", result["deployment"])
+            write_result(result, args.output_format, output_path, "deployment-plan")
+
+        elif args.command in ("create-deployment-bundle", "cdb"):
+            if len(set(args.deployment)) != len(args.deployment):
+                raise CliArgumentError("The same --deployment reference may not be specified more than once in one bundle.")
+            builder = DeploymentBundleBuilder(repository, resolver, schema_validator, logger)
+            bundle = builder.build(args.deployment, args.output_format)
+            logger.info("Deployment bundle created successfully with %d deployment(s).", len(args.deployment))
+            write_binary_result(bundle, output_path)
+
         else:
             validator = DeploymentConfigurationValidator(repository, resolver)
             if args.deployment:
@@ -112,8 +133,8 @@ def main(argv: list[str] | None = None) -> int:
                 logger.info("Validating complete configuration root '%s'.", repository.config_root)
                 result = validator.validate_all()
             logger.info("Configuration validation completed successfully (%d files).", len(result["validated_files"]))
+            write_result(result, args.output_format, output_path, "validation-report")
 
-        write_result(result, args.output_format, output_path)
         return 0
     except OrchestratorError as exc:
         if logger is not None:

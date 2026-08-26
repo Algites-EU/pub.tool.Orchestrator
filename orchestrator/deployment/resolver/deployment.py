@@ -39,7 +39,7 @@ class DeploymentResolver:
 
         self._validate_environment(environment)
         self._validate_host(host_entry, host, environment_entry, environment)
-        self._validate_guest(guest)
+        self._validate_guest(guest, guest_entry)
         self._validate_compute(deployment, guest)
         resolved_networks = self._resolve_networks(deployment, guest, host)
         resolved_resources, facts = self._resolve_resources(
@@ -47,11 +47,17 @@ class DeploymentResolver:
         )
         relation_results, warnings = self._resolve_relations(guest, facts)
 
+        resolved_os = {"type": guest["os"]["type"]}
+        if "configuration_path" in guest["os"]:
+            resolved_os["configuration_path"] = guest["os"]["configuration_path"]
+
         plan = {
             "model_version": 1,
             "deployment": deployment_entry.reference,
             "guest": guest_entry.reference,
             "host": host_entry.reference,
+            "environment": environment_entry.reference,
+            "resolved_os": resolved_os,
             "resolved_compute": self._resolve_compute(deployment, guest),
             "resolved_network_interfaces": resolved_networks,
             "resolved_mountable_resources": resolved_resources,
@@ -122,7 +128,11 @@ class DeploymentResolver:
                     f"Default filesystem interface for guest OS '{os_type}' references unknown provider '{provider_id}'."
                 )
 
-    def _validate_guest(self, guest: dict[str, Any]) -> None:
+    def _validate_guest(self, guest: dict[str, Any], guest_entry: ConfigurationEntry | None = None) -> None:
+        if guest_entry is not None and guest.get("os", {}).get("configuration_path"):
+            self.repository.resolve_package_relative_path(
+                guest_entry, guest["os"]["configuration_path"], require_exists=True
+            )
         resources = guest["mountable_resources"]["items"]
         for relation in guest["mountable_resources"]["relations"]:
             for resource_id in relation["mountable_resources"]:

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:complexType name="AttachmentType">
+    <xs:sequence>
+      <xs:element name="category" type="xs:string"/>
+      <xs:element name="reference" type="xs:string"/>
+      <xs:element name="path" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="AttachmentsType">
+    <xs:sequence>
+      <xs:element name="item" type="AttachmentType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="DeploymentType">
+    <xs:sequence>
+      <xs:element name="id" type="xs:string"/>
+      <xs:element name="reference" type="xs:string"/>
+      <xs:element name="deployment_plan" type="xs:string"/>
+      <xs:element name="attachments" type="AttachmentsType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="DeploymentsType">
+    <xs:sequence>
+      <xs:element name="item" type="DeploymentType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="deployment-bundle-manifest">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="bundle_version" type="xs:positiveInteger"/>
+        <xs:element name="model_version" type="xs:positiveInteger"/>
+        <xs:element name="deployment_plan_format">
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="yaml"/>
+              <xs:enumeration value="json"/>
+              <xs:enumeration value="xml"/>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
+        <xs:element name="deployments" type="DeploymentsType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -14,3 +14,9 @@ schemas:
   shared_mountable_resource_configuration: shared-mountable-resource-configuration.schema.yml
   guest_deployment_configuration: guest-deployment-configuration.schema.yml
   deployment_plan: deployment-plan.schema.yml
+  deployment_bundle_manifest: deployment-bundle-manifest.schema.yml
+
+xml_schemas:
+  deployment_plan: deployment-plan.xsd
+  deployment_bundle_manifest: deployment-bundle-manifest.xsd
+  validation_report: validation-report.xsd

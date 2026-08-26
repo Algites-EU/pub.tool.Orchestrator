@@ -2,6 +2,10 @@ model_version: 1
 deployment: example-datacenter-guest-deployment
 guest: example-datacenter-guest
 host: example-secondary-host
+environment: example-environment
+resolved_os:
+  type: NIXOS
+  configuration_path: nixos/
 resolved_compute:
   cpu: 2
   memory: 4GiB

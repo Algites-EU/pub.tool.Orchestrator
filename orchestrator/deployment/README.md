@@ -240,8 +240,10 @@ The resolver must validate that the concrete deployment does not weaken or contr
 
 `DeploymentPlan` is the fully resolved output of the Deployment resolver.
 
-It records concrete decisions such as:
+It records canonical source identities and concrete decisions such as:
 
+- deployment, guest, host and environment references,
+- resolved guest OS type and package-relative OS configuration path,
 - resolved CPU and memory,
 - resolved host-network bindings,
 - IPv4 and IPv6 addresses,
@@ -255,6 +257,14 @@ It records concrete decisions such as:
 - warnings for unsatisfied `PREFERRED` relations.
 
 Execution layers consume the resolved `DeploymentPlan` instead of independently reimplementing placement and resolution rules.
+
+A standalone `DeploymentPlan` is intentionally data-only. It does not embed the NixOS tree, scripts, templates or other files owned by the involved configuration entities.
+
+### DeploymentBundle
+
+`DeploymentBundle` is the portable ZIP execution artifact. It contains one or more DeploymentPlans and, separately for every plan, copies the complete Configuration Entity Packages accessed while resolving that deployment. Each deployment subtree is therefore self-contained even when this duplicates a host, guest or shared-resource package used by another plan in the same bundle.
+
+The bundle root also contains a manifest in the same selected structured format as the plans. YAML, JSON and XML are supported for plans and the manifest; entity-owned attachment files remain in their original formats. See `CLI.md` for the authoritative bundle layout and stream contract.
 
 ---
 
@@ -920,9 +930,9 @@ def resolve_deployment(
 
 The resolver should avoid unnecessary Ansible dependencies.
 
-Ansible integration can be provided through an Algites Ansible Collection using thin filter/action plugins or another narrow adapter.
+Ansible integration can be provided through an Algites Ansible Collection. When planning and execution are separated, a `DeploymentBundle` is the preferred transport boundary because it carries both resolved plans and all required entity-owned files to the control node. Direct Python API integration can still be used when the Orchestrator and Ansible share the same source configuration repository.
 
-The resolved plan can then be applied through ordinary idempotent roles, for example:
+The resolved plan from each bundle deployment can then be applied through ordinary idempotent roles, for example:
 
 ```text
 DeploymentPlan
@@ -959,7 +969,7 @@ Conceptually:
 ```text
 guests/
 └── codex/
-    ├── guest.yml
+    ├── codex.yml
     └── nixos/
         ├── default.nix
         ├── packages.nix
@@ -1125,7 +1135,11 @@ orchestrator/deployment/
 │   ├── guest-configuration.schema.yml
 │   ├── shared-mountable-resource-configuration.schema.yml
 │   ├── guest-deployment-configuration.schema.yml
-│   └── deployment-plan.schema.yml
+│   ├── deployment-plan.schema.yml
+│   ├── deployment-bundle-manifest.schema.yml
+│   ├── deployment-plan.xsd
+│   ├── deployment-bundle-manifest.xsd
+│   └── validation-report.xsd
 ├── config/
 │   ├── environments/
 │   ├── hosts/
@@ -1139,20 +1153,21 @@ The schemas are the authoritative definition of the current configuration shape.
 
 ---
 
-## Planned CLI
+## CLI
 
-The final CLI is not yet implemented.
-
-A possible Deployment command structure is:
+The current Deployment CLI provides:
 
 ```bash
-algites-orchestrator deployment validate
-algites-orchestrator deployment plan
-algites-orchestrator deployment apply
-algites-orchestrator deployment destroy
+algites-orchestrator create-deployment-plan    # cdp
+algites-orchestrator create-deployment-bundle  # cdb
+algites-orchestrator validate-configuration    # vc
 ```
 
-Exact command names and arguments may evolve during implementation.
+`cdp` creates one resolved DeploymentPlan in YAML, JSON or XML. `cdb` creates a
+portable ZIP containing one or more plans plus the complete Configuration Entity
+Packages required by each plan. `vc` validates the full configuration repository
+or one deployment closure. See the repository-level `CLI.md` for the authoritative
+CLI contract, package-discovery rules and DeploymentBundle layout.
 
 ---
 

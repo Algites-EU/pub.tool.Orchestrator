@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import json
 import os
 import shutil
 import subprocess
@@ -7,8 +9,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 import yaml
+from lxml import etree
 
 from orchestrator.common.configuration import ConfigurationCategory, ConfigurationRepository
 from orchestrator.common.errors import AmbiguousReferenceError, ConfigurationValidationError, ResolutionError, UnresolvedReferenceError
@@ -97,10 +101,10 @@ class OrchestratorTests(unittest.TestCase):
     def test_qualified_reference_is_exact_and_unqualified_reference_can_be_ambiguous(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            (root / "hosts" / "site01").mkdir(parents=True)
-            (root / "hosts" / "site02").mkdir(parents=True)
             for site in ("site01", "site02"):
-                (root / "hosts" / site / "hostA.yml").write_text("host:\n  id: hostA\n", encoding="utf-8")
+                package = root / "hosts" / site / "hostA"
+                package.mkdir(parents=True)
+                (package / "hostA.yml").write_text("host:\n  id: hostA\n", encoding="utf-8")
             repo = self.repository(root)
             self.assertEqual("site01/hostA", repo.resolve_entry("hosts", "site01/hostA").reference)
             with self.assertRaises(AmbiguousReferenceError) as cm:
@@ -112,7 +116,7 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             shutil.copytree(EXAMPLES, root / "config")
-            path = root / "config" / "guests" / "example-guest.yml"
+            path = root / "config" / "guests" / "example-guest" / "example-guest.yml"
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
             doc["guest"]["id"] = "different-id"
             path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
@@ -126,17 +130,17 @@ class OrchestratorTests(unittest.TestCase):
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
             (config / "hosts" / "site01").mkdir()
-            shutil.move(config / "hosts" / "example-host.yml", config / "hosts" / "site01" / "example-host.yml")
-            deployment_path = config / "deployments" / "example-guest-deployment.yml"
+            shutil.move(config / "hosts" / "example-host", config / "hosts" / "site01" / "example-host")
+            deployment_path = config / "deployments" / "example-guest-deployment" / "example-guest-deployment.yml"
             deployment = yaml.safe_load(deployment_path.read_text(encoding="utf-8"))
             deployment["host"] = "site01/example-host"
             deployment_path.write_text(yaml.safe_dump(deployment, sort_keys=False), encoding="utf-8")
             for shared_name in ("shared-gradle-cache", "shared-nix-cache"):
-                path = config / "shared-mountable-resources" / f"{shared_name}.yml"
+                path = config / "shared-mountable-resources" / shared_name / f"{shared_name}.yml"
                 shared = yaml.safe_load(path.read_text(encoding="utf-8"))
                 shared["host"] = "site01/example-host"
                 path.write_text(yaml.safe_dump(shared, sort_keys=False), encoding="utf-8")
-            cache_dep_path = config / "deployments" / "example-cache-provider-deployment.yml"
+            cache_dep_path = config / "deployments" / "example-cache-provider-deployment" / "example-cache-provider-deployment.yml"
             cache_dep = yaml.safe_load(cache_dep_path.read_text(encoding="utf-8"))
             cache_dep["host"] = "site01/example-host"
             cache_dep_path.write_text(yaml.safe_dump(cache_dep, sort_keys=False), encoding="utf-8")
@@ -155,6 +159,15 @@ class OrchestratorTests(unittest.TestCase):
         return subprocess.run(
             [sys.executable, "-m", "orchestrator", *args],
             cwd=str(cwd or ROOT), env=env, text=True, capture_output=True, check=False
+        )
+
+
+    def run_cli_binary(self, *args: str, cwd: Path | None = None):
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(ROOT)
+        return subprocess.run(
+            [sys.executable, "-m", "orchestrator", *args],
+            cwd=str(cwd or ROOT), env=env, capture_output=True, check=False
         )
 
     def test_cli_keeps_result_on_stdout_and_diagnostics_on_stderr(self):
@@ -197,9 +210,9 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            duplicate = config / "guests" / "other" / "example-guest.yml"
-            duplicate.parent.mkdir()
-            shutil.copy2(config / "guests" / "example-guest.yml", duplicate)
+            duplicate_package = config / "guests" / "other" / "example-guest"
+            duplicate_package.parent.mkdir()
+            shutil.copytree(config / "guests" / "example-guest", duplicate_package)
             proc = self.run_cli("cdp", f"-cr={config}", "-d=example-guest-deployment", "-q")
             self.assertEqual(5, proc.returncode)
             self.assertIn("Ambiguous guests configuration reference", proc.stderr)
@@ -209,7 +222,7 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            host_path = config / "hosts" / "example-host.yml"
+            host_path = config / "hosts" / "example-host" / "example-host.yml"
             host = yaml.safe_load(host_path.read_text(encoding="utf-8"))
             host["storage_targets"]["persistent-sata"]["impacted_devices"].append("nvme-a")
             host_path.write_text(yaml.safe_dump(host, sort_keys=False), encoding="utf-8")
@@ -224,7 +237,7 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            host_path = config / "hosts" / "example-host.yml"
+            host_path = config / "hosts" / "example-host" / "example-host.yml"
             host = yaml.safe_load(host_path.read_text(encoding="utf-8"))
             host["storage_targets"]["archive-local-nas"]["storage_system"] = "HOST_LOCAL_STORAGE"
             host_path.write_text(yaml.safe_dump(host, sort_keys=False), encoding="utf-8")
@@ -261,6 +274,147 @@ class OrchestratorTests(unittest.TestCase):
             self.assertEqual(0, proc.returncode, proc.stderr)
             report = yaml.safe_load(proc.stdout)
             self.assertEqual("deployment", report["scope"])
+
+
+    def test_plan_contains_environment_and_resolved_guest_os(self):
+        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment")
+        self.assertEqual("example-environment", plan["environment"])
+        self.assertEqual("NIXOS", plan["resolved_os"]["type"])
+        self.assertEqual("nixos/", plan["resolved_os"]["configuration_path"])
+
+    def test_configuration_entity_package_layout_is_required(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            package = config / "guests" / "example-guest"
+            definition = package / "example-guest.yml"
+            flat = config / "guests" / "example-guest.yml"
+            definition.rename(flat)
+            shutil.rmtree(package)
+            repo = self.repository(config)
+            resolver = DeploymentResolver(repo, self.schema)
+            with self.assertRaises(ConfigurationValidationError):
+                DeploymentConfigurationValidator(repo, resolver).validate_all()
+
+    def test_guest_configuration_path_must_exist_inside_entity_package(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            shutil.rmtree(config / "guests" / "example-guest" / "nixos")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError):
+                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+
+    def test_cdp_supports_xml_and_xml_matches_xsd(self):
+        proc = self.run_cli(
+            "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-ofmt=xml", "-q"
+        )
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        document = etree.fromstring(proc.stdout.encode("utf-8"))
+        self.assertEqual("deployment-plan", document.tag)
+        self.assertEqual("example-guest-deployment", document.findtext("deployment"))
+        schema = etree.XMLSchema(etree.parse(str(MODEL / "deployment-plan.xsd")))
+        self.assertTrue(schema.validate(document), schema.error_log)
+
+    def test_validation_report_supports_xml_and_matches_xsd(self):
+        proc = self.run_cli("vc", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-ofmt=xml", "-q")
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        document = etree.fromstring(proc.stdout.encode("utf-8"))
+        schema = etree.XMLSchema(etree.parse(str(MODEL / "validation-report.xsd")))
+        self.assertTrue(schema.validate(document), schema.error_log)
+
+    def test_cdb_stdout_is_zip_with_self_contained_yaml_deployment(self):
+        proc = self.run_cli_binary(
+            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-q"
+        )
+        self.assertEqual(0, proc.returncode, proc.stderr.decode("utf-8"))
+        with ZipFile(io.BytesIO(proc.stdout)) as archive:
+            names = set(archive.namelist())
+            self.assertIn("deployment-bundle/manifest.yml", names)
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/example-guest-deployment_deployment-plan.yml",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/guest/example-guest/example-guest.yml",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/guest/example-guest/nixos/default.nix",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/host/example-host/example-host.yml",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/guest-deployment/example-guest-deployment/example-guest-deployment.yml",
+                names,
+            )
+            manifest = yaml.safe_load(archive.read("deployment-bundle/manifest.yml"))
+            self.assertEqual("yaml", manifest["deployment_plan_format"])
+            self.assertEqual(1, len(manifest["deployments"]))
+
+    def test_cdb_can_contain_multiple_deployments_and_duplicate_dependencies_per_deployment(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "multi.zip"
+            proc = self.run_cli(
+                "cdb", f"-cr={EXAMPLES}",
+                "-d=example-guest-deployment", "-d=example-cache-provider-deployment",
+                f"-ofn={bundle_path}", "-q"
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            with ZipFile(bundle_path) as archive:
+                names = set(archive.namelist())
+                self.assertIn(
+                    "deployment-bundle/deployments/example-guest-deployment/host/example-host/example-host.yml",
+                    names,
+                )
+                self.assertIn(
+                    "deployment-bundle/deployments/example-cache-provider-deployment/host/example-host/example-host.yml",
+                    names,
+                )
+                manifest = yaml.safe_load(archive.read("deployment-bundle/manifest.yml"))
+                self.assertEqual(2, len(manifest["deployments"]))
+
+    def test_cdb_json_format_applies_to_manifest_and_plans(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "bundle.zip"
+            proc = self.run_cli(
+                "cdb", f"-cr={EXAMPLES}", "-d=example-datacenter-guest-deployment",
+                "-ofmt=json", f"-ofn={bundle_path}", "-q"
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            with ZipFile(bundle_path) as archive:
+                manifest = json.loads(archive.read("deployment-bundle/manifest.json"))
+                plan_path = "deployment-bundle/" + manifest["deployments"][0]["deployment_plan"]
+                plan = json.loads(archive.read(plan_path))
+                self.assertEqual("json", manifest["deployment_plan_format"])
+                self.assertEqual("example-datacenter-guest-deployment", plan["deployment"])
+
+    def test_cdb_xml_manifest_and_plan_match_xsds(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "bundle.zip"
+            proc = self.run_cli(
+                "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment",
+                "-ofmt=xml", f"-ofn={bundle_path}", "-q"
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            with ZipFile(bundle_path) as archive:
+                manifest_xml = etree.fromstring(archive.read("deployment-bundle/manifest.xml"))
+                manifest_schema = etree.XMLSchema(etree.parse(str(MODEL / "deployment-bundle-manifest.xsd")))
+                self.assertTrue(manifest_schema.validate(manifest_xml), manifest_schema.error_log)
+                plan_path = manifest_xml.findtext("deployments/item/deployment_plan")
+                plan_xml = etree.fromstring(archive.read("deployment-bundle/" + plan_path))
+                plan_schema = etree.XMLSchema(etree.parse(str(MODEL / "deployment-plan.xsd")))
+                self.assertTrue(plan_schema.validate(plan_xml), plan_schema.error_log)
+
+    def test_cdb_rejects_duplicate_deployment_arguments(self):
+        proc = self.run_cli(
+            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-d=example-guest-deployment", "-q"
+        )
+        self.assertEqual(2, proc.returncode)
+        self.assertIn("same --deployment", proc.stderr)
 
 
 if __name__ == "__main__":

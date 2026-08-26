@@ -28,7 +28,7 @@ class DeploymentConfigurationValidator:
             self.resolver._validate_environment(environment)
             self.resolver._validate_host(entry, host, environment_entry, environment)
         for entry in self.repository.all_entries("guests"):
-            self.resolver._validate_guest(self.repository.load_entry(entry))
+            self.resolver._validate_guest(self.repository.load_entry(entry), entry)
         for entry in self.repository.all_entries("shared_mountable_resources"):
             shared = self.repository.load_entry(entry)
             host_entry, host = self.repository.resolve("hosts", shared["host"])

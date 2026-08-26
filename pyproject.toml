@@ -13,6 +13,11 @@ dependencies = [
   "referencing>=0.30",
 ]
 
+[project.optional-dependencies]
+test = [
+  "lxml>=5.0",
+]
+
 [project.scripts]
 algites-orchestrator = "orchestrator.cli:main"
 
@@ -23,4 +28,4 @@ include-package-data = true
 include = ["orchestrator*"]
 
 [tool.setuptools.package-data]
-"orchestrator.deployment" = ["model/*.yml"]
+"orchestrator.deployment" = ["model/*.yml", "model/*.xsd"]

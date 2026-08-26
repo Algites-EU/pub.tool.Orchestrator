@@ -13,6 +13,8 @@ required:
   - deployment
   - guest
   - host
+  - environment
+  - resolved_os
   - resolved_compute
   - resolved_network_interfaces
   - resolved_mountable_resources
@@ -25,6 +27,19 @@ properties:
   deployment: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
   guest: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
   host: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+  environment: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+  resolved_os:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { $ref: "common.schema.yml#/$defs/GuestOsType" }
+      configuration_path:
+        type: string
+        minLength: 1
+        description: >
+          Path relative to the referenced guest Configuration Entity Package.
+          In a DeploymentBundle the same path is resolved below the copied guest package.
   resolved_compute:
     type: object
     additionalProperties: false
