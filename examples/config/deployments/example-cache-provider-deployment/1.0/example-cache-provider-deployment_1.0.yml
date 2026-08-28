@@ -8,9 +8,15 @@ deployment:
     caches but does not own their infrastructure lifecycle; both cache backings
     are defined independently in SharedMountableResourceConfiguration files.
 
-guest: example-cache-provider
-host: example-host
+  config_version: '1.0'
+  config_version_state: RELEASED
+guest:
+  reference: example-cache-provider
+  reference_config_version: '1.0'
+host:
 
+  reference: example-host
+  reference_config_version: '1.0'
 compute:
   description: Concrete compute allocation for the cache provider.
   cpu: 2
@@ -44,9 +50,13 @@ mountable_resources:
     nix-cache:
       description: >
         RW attachment to the independently defined persistent shared Nix cache.
-      shared_mountable_resource: shared-nix-cache
+      shared_mountable_resource:
 
+        reference: shared-nix-cache
+        reference_config_version: '1.0'
     gradle-cache:
       description: >
         RW attachment to the independently defined disposable shared Gradle cache.
-      shared_mountable_resource: shared-gradle-cache
+      shared_mountable_resource:
+        reference: shared-gradle-cache
+        reference_config_version: '1.0'

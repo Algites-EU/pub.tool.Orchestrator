@@ -142,7 +142,8 @@ It currently describes:
 - minimum/default compute requirements,
 - logical network interfaces,
 - mountable resources,
-- relations between mountable resources.
+- relations between mountable resources,
+- consumed and provided `ServiceConfiguration` references.
 
 A guest configuration should not contain host-specific values such as:
 
@@ -153,7 +154,7 @@ A guest configuration should not contain host-specific values such as:
 - concrete QCOW2 paths,
 - concrete deployment IP addresses.
 
-For NixOS guests, the guest YAML references the NixOS configuration but does not duplicate packages, services, users, or other settings that remain authoritative in Nix.
+For NixOS guests, `os.type: NIXOS` selects the framework-owned `nixos/` attachment directory; packages, services, users and other settings remain authoritative there rather than being duplicated in YAML. Debian hosts or guests analogously select `debian/`.
 
 ---
 
@@ -196,6 +197,47 @@ The lifecycle of `shared-gradle-cache` is independent of the lifecycle of all th
 
 ---
 
+### ServiceConfiguration
+
+`ServiceConfiguration` is a reusable versioned definition of a logical service.
+Hosts and guests can declare named `consumed_services` and `provided_services`
+references to exact service configuration versions. Concrete provider-instance
+selection is intentionally not modeled yet.
+
+Every ServiceConfiguration version package has three fixed definition branches,
+and each branch contains operating-system-specific implementations:
+
+```text
+services/<namespace>/<service-id>/<config-version>/
+├── <service-id>_<config-version>.yml
+├── common/
+│   ├── nixos/
+│   └── debian/
+├── consumer/
+│   ├── nixos/
+│   └── debian/
+└── provider/
+    ├── nixos/
+    └── debian/
+```
+
+`common/<os>/` contains implementation definitions shared by consumer and provider
+roles for that OS. It is optional for a given OS. `consumer/<os>/` and
+`provider/<os>/` contain role-specific implementations; the corresponding role
+directory must exist when the service is consumed or provided by a target with
+that `os.type`. Definition files are not stored directly below `common/`,
+`consumer/` or `provider/`. The YAML may define OS-independent
+`network_service_bindings` describing transport/port contracts of the service.
+
+The resolver selects service implementation paths independently for each target.
+For example, a NixOS guest consuming a service resolves `common/nixos/` (when
+present) plus `consumer/nixos/`, while a Debian host consuming the same service
+resolves `common/debian/` plus `consumer/debian/`. Provider and consumer systems
+do not need to run the same operating system. The selected paths are written
+explicitly to `DeploymentPlan.resolved_services`.
+
+---
+
 ### GuestDeploymentConfiguration
 
 `GuestDeploymentConfiguration` binds one concrete guest deployment to one concrete deployment host.
@@ -231,7 +273,9 @@ backend: LVM
 For a shared resource, the deployment instead supplies the shared identity:
 
 ```yaml
-shared_mountable_resource: shared-gradle-cache
+shared_mountable_resource:
+  reference: shared-gradle-cache
+  reference_config_version: "1.0"
 ```
 
 The resolver must validate that the concrete deployment does not weaken or contradict requirements from `GuestConfiguration`.
@@ -244,7 +288,7 @@ The resolver must validate that the concrete deployment does not weaken or contr
 
 It records canonical source identities and concrete decisions such as:
 
-- deployment, guest, host and environment references,
+- exact deployment, guest, host and environment configuration references and versions,
 - resolved guest OS type and package-relative OS configuration path,
 - resolved CPU and memory,
 - resolved host-network bindings,
@@ -255,6 +299,7 @@ It records canonical source identities and concrete decisions such as:
 - concrete storage paths,
 - selected filesystem providers,
 - shared-resource identities,
+- resolved consumed/provided ServiceConfiguration versions,
 - relation results,
 - warnings for unsatisfied `PREFERRED` relations.
 
@@ -264,9 +309,46 @@ A standalone `DeploymentPlan` is intentionally data-only. It does not embed the 
 
 ### DeploymentBundle
 
-`DeploymentBundle` is the portable ZIP execution artifact. It contains one or more DeploymentPlans and, separately for every plan, copies the complete Configuration Entity Packages accessed while resolving that deployment. Each deployment subtree is therefore self-contained even when this duplicates a host, guest or shared-resource package used by another plan in the same bundle.
+`DeploymentBundle` is the portable ZIP execution artifact. It contains one or more DeploymentPlans and, separately for every plan, copies the complete Configuration Entity Packages accessed while resolving that deployment. Each deployment subtree is therefore self-contained even when this duplicates a host, guest, service or shared-resource package used by another plan in the same bundle.
 
 The bundle root also contains a manifest in the same selected structured format as the plans. YAML, JSON and XML are supported for plans and the manifest; entity-owned attachment files remain in their original formats. See `CLI.md` for the authoritative bundle layout and stream contract.
+
+---
+
+## Configuration Entity Versioning
+
+All source configuration entities use one versioning model. Each root entity
+contains:
+
+```yaml
+id: example
+config_version: "1.0"
+config_version_state: RELEASED
+```
+
+`config_version` identifies an Orchestrator configuration definition; it is not
+the runtime version of an application, package, OS or service.
+`config_version_state` is a user-defined lifecycle/policy label. Orchestrator
+does not assign built-in semantics to values such as `DEVELOPMENT`, `TESTED` or
+`RELEASED`.
+
+The repository layout is uniformly:
+
+```text
+<category>/<namespace>/<entity-id>/<config-version>/<entity-id>_<config-version>.yml
+```
+
+Cross-entity references always identify both the stable entity and exact version:
+
+```yaml
+guest:
+  reference: application/backend
+  reference_config_version: "14.0"
+```
+
+There is no implicit `latest` during resolution. Multiple versions of the same
+entity may coexist in one configuration repository. The CLI compact form uses
+`<reference>@<config_version>`.
 
 ---
 
@@ -894,7 +976,9 @@ shared_mountable_resource:
 storage_class: DISPOSABLE
 representation: FILESYSTEM
 
-host: example-host
+host:
+  reference: example-host
+  reference_config_version: "1.0"
 host_storage_target: disposable-nvme
 backend: DIRECTORY
 host_mountable_resource_interface: nfs-vm
@@ -922,7 +1006,9 @@ sharing: SHARED
 Their deployment configurations both bind to:
 
 ```yaml
-shared_mountable_resource: shared-gradle-cache
+shared_mountable_resource:
+  reference: shared-gradle-cache
+  reference_config_version: "1.0"
 ```
 
 This keeps:
@@ -1027,15 +1113,21 @@ Conceptually:
 ```text
 guests/
 └── codex/
-    ├── codex.yml
-    └── nixos/
-        ├── default.nix
-        ├── packages.nix
-        ├── services.nix
-        └── ...
+    └── 1.0/
+        ├── codex_1.0.yml
+        └── nixos/
+            ├── default.nix
+            ├── packages.nix
+            ├── services.nix
+            └── ...
 ```
 
-The guest YAML references the NixOS configuration but does not duplicate package or service lists.
+The guest YAML declares only `os.type: NIXOS`; the `nixos/` path is a framework
+convention and is not repeated in YAML. The same convention applies to hosts.
+For Debian, `os.type: DEBIAN` selects `debian/`. A Debian implementation may
+contain `debian/apt/packages.list`, one APT package selection per non-comment
+line; the future execution layer will install missing listed packages and upgrade
+listed installed packages to newer configured candidate versions.
 
 For example, packages remain authoritative in Nix:
 
@@ -1191,6 +1283,7 @@ orchestrator/deployment/
 │   ├── deployment-environment-configuration.schema.yml
 │   ├── host-configuration.schema.yml
 │   ├── guest-configuration.schema.yml
+│   ├── service-configuration.schema.yml
 │   ├── shared-mountable-resource-configuration.schema.yml
 │   ├── guest-deployment-configuration.schema.yml
 │   ├── deployment-plan.schema.yml
@@ -1199,6 +1292,7 @@ orchestrator/deployment/
 │   ├── deployment-environment-configuration.xsd
 │   ├── host-configuration.xsd
 │   ├── guest-configuration.xsd
+│   ├── service-configuration.xsd
 │   ├── shared-mountable-resource-configuration.xsd
 │   ├── guest-deployment-configuration.xsd
 │   ├── deployment-plan.xsd
@@ -1208,6 +1302,7 @@ orchestrator/deployment/
 │   ├── environments/
 │   ├── hosts/
 │   ├── guests/
+│   ├── services/
 │   ├── shared-mountable-resources/
 │   └── deployments/
 └── example-plans/
@@ -1290,6 +1385,6 @@ root [`CLI.md`](../../CLI.md).
 Typical source-tree usage:
 
 ```bash
-python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment
+python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment@1.0
 python3 -m orchestrator vc -cr=examples/config
 ```

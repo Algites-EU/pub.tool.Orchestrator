@@ -23,10 +23,17 @@ properties:
     items:
       type: object
       additionalProperties: false
-      required: [id, reference, deployment_plan, attachments]
+      required:
+      - id
+      - reference
+      - reference_config_version
+      - deployment_plan
+      - attachments
       properties:
-        id: { $ref: "common.schema.yml#/$defs/Identifier" }
-        reference: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+        id: {$ref: "common.schema.yml#/$defs/Identifier"}
+        reference:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*$
         deployment_plan:
           type: string
           minLength: 1
@@ -36,13 +43,23 @@ properties:
           items:
             type: object
             additionalProperties: false
-            required: [category, reference, path]
+            required:
+            - category
+            - reference
+            - reference_config_version
+            - path
             properties:
               category:
                 type: string
                 minLength: 1
-              reference: { $ref: "common.schema.yml#/$defs/ConfigurationReference" }
+              reference:
+                type: string
+                pattern: ^[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*$
               path:
                 type: string
                 minLength: 1
                 description: Configuration Entity Package path relative to deployment-bundle/.
+              reference_config_version:
+                $ref: common.schema.yml#/$defs/ConfigVersion
+        reference_config_version:
+          $ref: common.schema.yml#/$defs/ConfigVersion

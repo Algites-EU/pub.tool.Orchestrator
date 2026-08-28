@@ -8,12 +8,10 @@ guest:
     multiple persistent block resources, archive data, local/off-site backup,
     shared Nix/Gradle caches and multiple logical network interfaces.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 os:
-  description: >
-    NixOS configuration is owned by the adjacent nixos/ tree. Packages and
-    services belong in Nix rather than being duplicated in this YAML model.
   type: NIXOS
-  configuration_path: nixos/
 
 compute:
   description: Compute constraints and defaults of the example guest.
@@ -139,26 +137,30 @@ mountable_resources:
       mount_point: /storage/cache/gradle
 
   relations:
-    - display_name: Application Data and Transaction Log Separation
-      description: >
-        Prefer independent devices and controllers for primary application data
-        and transaction-log to reduce shared I/O bottlenecks.
-      mountable_resources: [application-data, transaction-log]
-      relations: [NO_SHARED_DEVICE, NO_SHARED_CONTROLLER]
-      requirement: PREFERRED
+  - display_name: Application Data and Transaction Log Separation
+    description: >
+      Prefer independent devices and controllers for primary application data
+      and transaction-log to reduce shared I/O bottlenecks.
+    mountable_resources: [application-data, transaction-log]
+    relations: [NO_SHARED_DEVICE, NO_SHARED_CONTROLLER]
+    requirement: PREFERRED
 
-    - display_name: Local Backup Independence
-      description: >
-        Local backup must use a different storage system and backing host than
-        primary application data.
-      mountable_resources: [application-data, local-backup]
-      relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST]
-      requirement: REQUIRED
+  - display_name: Local Backup Independence
+    description: >
+      Local backup must use a different storage system and backing host than
+      primary application data.
+    mountable_resources: [application-data, local-backup]
+    relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST]
+    requirement: REQUIRED
 
-    - display_name: Off-site Backup Independence
-      description: >
-        Off-site backup must be independent from primary data at storage-system,
-        backing-host and site levels.
-      mountable_resources: [application-data, offsite-backup]
-      relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST, NO_SHARED_SITE]
-      requirement: REQUIRED
+  - display_name: Off-site Backup Independence
+    description: >
+      Off-site backup must be independent from primary data at storage-system,
+      backing-host and site levels.
+    mountable_resources: [application-data, offsite-backup]
+    relations: [NO_SHARED_STORAGE_SYSTEM, NO_SHARED_HOST, NO_SHARED_SITE]
+    requirement: REQUIRED
+consumed_services:
+  artifact-cache:
+    reference: example-artifact-cache
+    reference_config_version: '1.0'

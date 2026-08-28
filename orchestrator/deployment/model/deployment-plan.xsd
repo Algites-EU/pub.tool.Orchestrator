@@ -11,8 +11,7 @@
 
   <xs:complexType name="ResolvedOsType">
     <xs:all>
-      <xs:element name="type" type="GuestOsType"/>
-      <xs:element name="configuration_path" type="NonEmptyStringType" minOccurs="0"/>
+      <xs:element name="type" type="OperatingSystemType"/>
     </xs:all>
   </xs:complexType>
 
@@ -42,9 +41,11 @@
       <xs:element name="host" type="ConfigurationReferenceType"/>
       <xs:element name="environment" type="ConfigurationReferenceType"/>
       <xs:element name="resolved_os" type="ResolvedOsType"/>
+      <xs:element name="resolved_host_os" type="ResolvedOsType"/>
       <xs:element name="resolved_compute" type="ResolvedComputeType"/>
       <xs:element name="resolved_network_interfaces" type="DynamicMapType"/>
       <xs:element name="resolved_management_endpoint" type="NetworkServiceEndpointType"/>
+      <xs:element name="resolved_services" type="DynamicMapType"/>
       <xs:element name="resolved_mountable_resources" type="DynamicMapType"/>
       <xs:element name="relation_results" type="RelationResultsType"/>
       <xs:element name="warnings" type="StringListType"/>

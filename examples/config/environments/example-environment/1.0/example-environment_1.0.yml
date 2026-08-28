@@ -8,6 +8,8 @@ environment:
     NAS, a remote backup NAS and a shared datacenter SAN across three physical
     sites. It demonstrates STORAGE_SYSTEM, HOST and SITE independence.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 sites:
   local-site:
     display_name: Local Site

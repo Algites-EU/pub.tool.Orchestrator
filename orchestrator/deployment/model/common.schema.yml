@@ -21,15 +21,21 @@ $defs:
 
   ConfigurationReference:
     title: ConfigurationReference
-    description: >
-      Reference to a configuration file inside one configuration category. A
-      bare identifier is an unqualified reference. One or more '/'-separated
-      identifier segments form an exact category-relative reference such as
-      site01/hostA. References are logical paths, never filesystem paths, and
-      therefore cannot be absolute or contain '.' or '..' segments.
-    type: string
-    pattern: "^[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*$"
-
+    description: Exact reference to one version of an entity in a configuration category. 'reference' identifies the 
+      stable entity (qualified or unqualified) and 'reference_config_version' selects the exact configuration version.
+    type: object
+    additionalProperties: false
+    required:
+    - reference
+    - reference_config_version
+    properties:
+      reference:
+        type: string
+        pattern: ^[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*$
+        description: Stable configuration entity reference without a version component.
+      reference_config_version:
+        $ref: '#/$defs/ConfigVersion'
+        description: Exact config_version of the referenced configuration entity.
   DisplayName:
     title: DisplayName
     description: >
@@ -66,41 +72,41 @@ $defs:
       Abstract storage service class requested by a guest. It expresses the
       desired storage role rather than a concrete host implementation.
     oneOf:
-      - const: DISPOSABLE
-        description: >
-          Storage whose loss is acceptable because its content can be rebuilt,
-          regenerated or downloaded again. Implementations may favor speed or
-          capacity over redundancy.
-      - const: PERSISTENT
-        description: >
-          Normal operational storage whose content must survive guest recreation
-          and ordinary failures according to the host persistent-storage policy.
-      - const: ARCHIVE
-        description: >
-          Capacity-oriented persistent storage for colder or long-lived data,
-          media and backup repositories. Lower performance than PERSISTENT is
-          acceptable when the host chooses such an implementation.
+    - const: DISPOSABLE
+      description: >
+        Storage whose loss is acceptable because its content can be rebuilt,
+        regenerated or downloaded again. Implementations may favor speed or
+        capacity over redundancy.
+    - const: PERSISTENT
+      description: >
+        Normal operational storage whose content must survive guest recreation
+        and ordinary failures according to the host persistent-storage policy.
+    - const: ARCHIVE
+      description: >
+        Capacity-oriented persistent storage for colder or long-lived data,
+        media and backup repositories. Lower performance than PERSISTENT is
+        acceptable when the host chooses such an implementation.
 
   MountableResourcePurpose:
     title: MountableResourcePurpose
     description: Functional role of the mounted data from the guest point of view.
     oneOf:
-      - const: SYSTEM
-        description: >
-          Guest operating-system or machine state such as a root filesystem.
-          SYSTEM storage may itself be DISPOSABLE when the system is reproducible.
-      - const: DATA
-        description: >
-          Primary application or user data such as database data, workspaces,
-          uploaded files, documents or media.
-      - const: CACHE
-        description: >
-          Reusable data used to avoid repeated computation or downloads. A cache
-          may be PERSISTENT or DISPOSABLE depending on the cost of rebuilding it.
-      - const: BACKUP
-        description: >
-          Data whose purpose is to preserve recoverable copies of other data.
-          Independence from primary data is expressed by resource relations.
+    - const: SYSTEM
+      description: >
+        Guest operating-system or machine state such as a root filesystem.
+        SYSTEM storage may itself be DISPOSABLE when the system is reproducible.
+    - const: DATA
+      description: >
+        Primary application or user data such as database data, workspaces,
+        uploaded files, documents or media.
+    - const: CACHE
+      description: >
+        Reusable data used to avoid repeated computation or downloads. A cache
+        may be PERSISTENT or DISPOSABLE depending on the cost of rebuilding it.
+    - const: BACKUP
+      description: >
+        Data whose purpose is to preserve recoverable copies of other data.
+        Independence from primary data is expressed by resource relations.
 
   MountableResourceRepresentation:
     title: MountableResourceRepresentation
@@ -108,15 +114,15 @@ $defs:
       Logical form presented to the guest. Host implementation details are not
       encoded in this value.
     oneOf:
-      - const: BLOCK
-        description: >
-          The guest receives a block device and mounts a filesystem from it.
-          QCOW2 versus LVM and virtio-blk versus virtio-scsi remain hypervisor
-          implementation details rather than guest-visible resource interfaces.
-      - const: FILESYSTEM
-        description: >
-          The guest receives a filesystem/share that can be mounted directly,
-          for example using NFS, SMB/CIFS or virtiofs.
+    - const: BLOCK
+      description: >
+        The guest receives a block device and mounts a filesystem from it.
+        QCOW2 versus LVM and virtio-blk versus virtio-scsi remain hypervisor
+        implementation details rather than guest-visible resource interfaces.
+    - const: FILESYSTEM
+      description: >
+        The guest receives a filesystem/share that can be mounted directly,
+        for example using NFS, SMB/CIFS or virtiofs.
 
   MountableResourceAccessMode:
     title: MountableResourceAccessMode
@@ -125,10 +131,10 @@ $defs:
       to the guest/resource relationship, so one shared backing may be RW for a
       writer guest and RO for reader guests.
     oneOf:
-      - const: RO
-        description: Read-only access; the selected implementation must prevent guest writes.
-      - const: RW
-        description: Read-write access; the guest may modify the resource.
+    - const: RO
+      description: Read-only access; the selected implementation must prevent guest writes.
+    - const: RW
+      description: Read-write access; the guest may modify the resource.
 
   MountableResourceSharingMode:
     title: MountableResourceSharingMode
@@ -137,14 +143,14 @@ $defs:
       declare whether the backing is exclusive to this deployment or intentionally
       shared; the resolver does not choose between these meanings.
     oneOf:
-      - const: EXCLUSIVE
-        description: >
-          The backing must not be concurrently used by another consumer in a way
-          that violates exclusivity.
-      - const: SHARED
-        description: >
-          The resource is intentionally shared and the selected representation,
-          interface and backend must safely support concurrent consumers.
+    - const: EXCLUSIVE
+      description: >
+        The backing must not be concurrently used by another consumer in a way
+        that violates exclusivity.
+    - const: SHARED
+      description: >
+        The resource is intentionally shared and the selected representation,
+        interface and backend must safely support concurrent consumers.
 
   MountableResourceInterfaceType:
     title: MountableResourceInterfaceType
@@ -153,40 +159,40 @@ $defs:
       use this enum because their hypervisor transport is not a guest resource
       contract.
     oneOf:
-      - const: SAMBA
-        description: SMB/CIFS filesystem sharing exposed by a host-side Samba provider.
-      - const: NFS
-        description: Network File System sharing exposed by a host-side NFS provider.
-      - const: VIRTIOFS
-        description: >
-          virtiofs filesystem sharing between host and guest. It requires no TCP/IP
-          service but remains guest-visible because the guest mounts virtiofs.
+    - const: SAMBA
+      description: SMB/CIFS filesystem sharing exposed by a host-side Samba provider.
+    - const: NFS
+      description: Network File System sharing exposed by a host-side NFS provider.
+    - const: VIRTIOFS
+      description: >
+        virtiofs filesystem sharing between host and guest. It requires no TCP/IP
+        service but remains guest-visible because the guest mounts virtiofs.
 
   MountableResourceBackendType:
     title: MountableResourceBackendType
     description: Concrete host-side backing implementation for a mountable resource.
     oneOf:
-      - const: QCOW2
-        description: QEMU Copy-On-Write image file used for BLOCK representation.
-      - const: RAW_FILE
-        description: Raw image file used for BLOCK representation.
-      - const: LVM
-        description: LVM logical volume created in a configured volume group for BLOCK representation.
-      - const: DIRECTORY
-        description: Host directory used as backing for FILESYSTEM representation.
+    - const: QCOW2
+      description: QEMU Copy-On-Write image file used for BLOCK representation.
+    - const: RAW_FILE
+      description: Raw image file used for BLOCK representation.
+    - const: LVM
+      description: LVM logical volume created in a configured volume group for BLOCK representation.
+    - const: DIRECTORY
+      description: Host directory used as backing for FILESYSTEM representation.
 
   MountableResourceRelationRequirement:
     title: MountableResourceRelationRequirement
     description: Enforcement level of a mountable-resource relation.
     oneOf:
-      - const: REQUIRED
-        description: >
-          Hard business requirement. Deployment fails if the resolver cannot
-          prove that the relation is satisfied; unknown topology is not enough.
-      - const: PREFERRED
-        description: >
-          Soft business preference. Resolver should favor a satisfying placement
-          but may proceed with an explicit warning when it cannot be satisfied.
+    - const: REQUIRED
+      description: >
+        Hard business requirement. Deployment fails if the resolver cannot
+        prove that the relation is satisfied; unknown topology is not enough.
+    - const: PREFERRED
+      description: >
+        Soft business preference. Resolver should favor a satisfying placement
+        but may proceed with an explicit warning when it cannot be satisfied.
 
   MountableResourceRelationType:
     title: MountableResourceRelationType
@@ -195,29 +201,29 @@ $defs:
       mountable resources, every selected NO_SHARED_* relation must hold for
       every pair in that group.
     oneOf:
-      - const: NO_SHARED_DEVICE
-        description: >
-          Resolved HostStorageTargets must have no common identifiers in their
-          impacted_devices sets. Targets should list all relevant physical and
-          logical device layers so common I/O/failure dependencies are visible.
-      - const: NO_SHARED_CONTROLLER
-        description: >
-          Resolved HostStorageTargets must have no common identifiers in their
-          impacted_controllers sets.
-      - const: NO_SHARED_STORAGE_SYSTEM
-        description: >
-          Resources must not use the same storage system. HOST_LOCAL_STORAGE is
-          expanded to an implicit identity unique to the deployment host.
-      - const: NO_SHARED_HOST
-        description: >
-          The backing storage systems must not depend on the same physical host
-          or appliance. HOST_LOCAL_STORAGE depends on the deployment host;
-          external storage dependencies come from DeploymentEnvironmentConfiguration.
-      - const: NO_SHARED_SITE
-        description: >
-          The backing storage systems must not depend on the same physical site.
-          HOST_LOCAL_STORAGE inherits the deployment host site; external storage
-          systems inherit sites from their impacted hosts and/or explicit sites.
+    - const: NO_SHARED_DEVICE
+      description: >
+        Resolved HostStorageTargets must have no common identifiers in their
+        impacted_devices sets. Targets should list all relevant physical and
+        logical device layers so common I/O/failure dependencies are visible.
+    - const: NO_SHARED_CONTROLLER
+      description: >
+        Resolved HostStorageTargets must have no common identifiers in their
+        impacted_controllers sets.
+    - const: NO_SHARED_STORAGE_SYSTEM
+      description: >
+        Resources must not use the same storage system. HOST_LOCAL_STORAGE is
+        expanded to an implicit identity unique to the deployment host.
+    - const: NO_SHARED_HOST
+      description: >
+        The backing storage systems must not depend on the same physical host
+        or appliance. HOST_LOCAL_STORAGE depends on the deployment host;
+        external storage dependencies come from DeploymentEnvironmentConfiguration.
+    - const: NO_SHARED_SITE
+      description: >
+        The backing storage systems must not depend on the same physical site.
+        HOST_LOCAL_STORAGE inherits the deployment host site; external storage
+        systems inherit sites from their impacted hosts and/or explicit sites.
 
   HostStorageDeviceType:
     title: HostStorageDeviceType
@@ -225,33 +231,33 @@ $defs:
       Type of a physical or logical storage-device node registered on a host.
       HostStorageTargets may list multiple layers of one stack as impacted devices.
     oneOf:
-      - const: PHYSICAL_DISK
-        description: Physical HDD, SSD or NVMe device.
-      - const: PARTITION
-        description: Partition on a physical block device.
-      - const: RAID
-        description: RAID/mdadm virtual block device.
-      - const: LVM_PV
-        description: LVM physical volume.
-      - const: LVM_VG
-        description: LVM volume group represented as a topology node.
-      - const: LVM_LV
-        description: LVM logical volume.
-      - const: OTHER
-        description: Other physical or logical storage layer.
+    - const: PHYSICAL_DISK
+      description: Physical HDD, SSD or NVMe device.
+    - const: PARTITION
+      description: Partition on a physical block device.
+    - const: RAID
+      description: RAID/mdadm virtual block device.
+    - const: LVM_PV
+      description: LVM physical volume.
+    - const: LVM_VG
+      description: LVM volume group represented as a topology node.
+    - const: LVM_LV
+      description: LVM logical volume.
+    - const: OTHER
+      description: Other physical or logical storage layer.
 
   HostNetworkMode:
     title: HostNetworkMode
     description: High-level connectivity mode of a host/libvirt guest network.
     oneOf:
-      - const: ISOLATED
-        description: Guest network has no automatic forwarding to external networks.
-      - const: NAT
-        description: Guest traffic may be translated by the host toward external networks.
-      - const: ROUTED
-        description: Guest network is routed without address translation.
-      - const: BRIDGED
-        description: Guest interfaces are bridged to an external layer-2 network.
+    - const: ISOLATED
+      description: Guest network has no automatic forwarding to external networks.
+    - const: NAT
+      description: Guest traffic may be translated by the host toward external networks.
+    - const: ROUTED
+      description: Guest network is routed without address translation.
+    - const: BRIDGED
+      description: Guest interfaces are bridged to an external layer-2 network.
 
 
   NetworkServiceApplicationProtocol:
@@ -267,9 +273,9 @@ $defs:
     title: NetworkServiceTransportProtocol
     description: Transport protocol used by one concrete network-service binding.
     oneOf:
-      - const: TCP
-      - const: UDP
-      - const: SCTP
+    - const: TCP
+    - const: UDP
+    - const: SCTP
 
   NetworkServiceBinding:
     title: NetworkServiceBinding
@@ -281,8 +287,8 @@ $defs:
     additionalProperties: false
     required: [application_protocol, transport_protocol, port]
     properties:
-      application_protocol: { $ref: "#/$defs/NetworkServiceApplicationProtocol" }
-      transport_protocol: { $ref: "#/$defs/NetworkServiceTransportProtocol" }
+      application_protocol: {$ref: "#/$defs/NetworkServiceApplicationProtocol"}
+      transport_protocol: {$ref: "#/$defs/NetworkServiceTransportProtocol"}
       port:
         type: integer
         minimum: 1
@@ -298,7 +304,7 @@ $defs:
     additionalProperties: false
     required: [service_binding, address]
     properties:
-      service_binding: { $ref: "#/$defs/NetworkServiceBinding" }
+      service_binding: {$ref: "#/$defs/NetworkServiceBinding"}
       address:
         type: string
         minLength: 1
@@ -315,25 +321,30 @@ $defs:
     additionalProperties: false
     required: [service_binding, network_interface]
     properties:
-      service_binding: { $ref: "#/$defs/NetworkServiceBinding" }
-      network_interface: { $ref: "#/$defs/Identifier" }
+      service_binding: {$ref: "#/$defs/NetworkServiceBinding"}
+      network_interface: {$ref: "#/$defs/Identifier"}
       address_family:
         oneOf:
-          - const: IPV4
-          - const: IPV6
+        - const: IPV4
+        - const: IPV6
 
-  GuestOsType:
-    title: GuestOsType
-    description: Guest operating-system family used for deployment behavior and host defaults.
+  OperatingSystemType:
+    title: OperatingSystemType
+    description: >
+      Supported operating-system family used to select framework-owned host, guest
+      and ServiceConfiguration implementation directories. The implementation
+      directory name is the lowercase form of the enum value.
     oneOf:
-      - const: NIXOS
-        description: NixOS guest whose authoritative packages/services are defined in Nix.
-      - const: LINUX
-        description: Non-NixOS Linux guest.
-      - const: WINDOWS
-        description: Microsoft Windows guest.
-      - const: MACOS
-        description: Apple macOS guest.
+    - const: NIXOS
+      description: NixOS system whose authoritative packages/services are defined in NixOS configuration.
+    - const: DEBIAN
+      description: Debian system managed through Debian-specific configuration such as APT package requirements.
+    - const: LINUX
+      description: Other generic non-NixOS Linux system.
+    - const: WINDOWS
+      description: Microsoft Windows system.
+    - const: MACOS
+      description: Apple macOS system.
 
 
   DataSizeConstraint:
@@ -345,8 +356,8 @@ $defs:
     type: object
     additionalProperties: false
     properties:
-      minimum: { $ref: "#/$defs/DataSize" }
-      default: { $ref: "#/$defs/DataSize" }
+      minimum: {$ref: "#/$defs/DataSize"}
+      default: {$ref: "#/$defs/DataSize"}
 
   MountableResource:
     title: MountableResource
@@ -357,29 +368,29 @@ $defs:
     additionalProperties: false
     required: [display_name, description, storage_class, purpose, representation, access, sharing, mount_point]
     properties:
-      display_name: { $ref: "#/$defs/DisplayName" }
-      description: { $ref: "#/$defs/Description" }
-      storage_class: { $ref: "#/$defs/MountableResourceStorageClass" }
-      purpose: { $ref: "#/$defs/MountableResourcePurpose" }
-      representation: { $ref: "#/$defs/MountableResourceRepresentation" }
-      access: { $ref: "#/$defs/MountableResourceAccessMode" }
-      sharing: { $ref: "#/$defs/MountableResourceSharingMode" }
+      display_name: {$ref: "#/$defs/DisplayName"}
+      description: {$ref: "#/$defs/Description"}
+      storage_class: {$ref: "#/$defs/MountableResourceStorageClass"}
+      purpose: {$ref: "#/$defs/MountableResourcePurpose"}
+      representation: {$ref: "#/$defs/MountableResourceRepresentation"}
+      access: {$ref: "#/$defs/MountableResourceAccessMode"}
+      sharing: {$ref: "#/$defs/MountableResourceSharingMode"}
       mount_point:
         type: string
         minLength: 1
         description: Absolute path where the resource is mounted inside the guest.
-      capacity: { $ref: "#/$defs/DataSizeConstraint" }
+      capacity: {$ref: "#/$defs/DataSizeConstraint"}
       required_interface:
         $ref: "#/$defs/MountableResourceInterfaceType"
         description: >
           Optional hard FILESYSTEM-interface requirement. Normally omit this so
           the resolver can choose a host-supported provider. Invalid for BLOCK.
     allOf:
-      - if:
-          properties: { representation: { const: BLOCK } }
-          required: [representation]
-        then:
-          not: { required: [required_interface] }
+    - if:
+        properties: {representation: {const: BLOCK}}
+        required: [representation]
+      then:
+        not: {required: [required_interface]}
 
   MountableResourceRelation:
     title: MountableResourceRelation
@@ -390,21 +401,21 @@ $defs:
     additionalProperties: false
     required: [display_name, description, mountable_resources, relations, requirement]
     properties:
-      display_name: { $ref: "#/$defs/DisplayName" }
-      description: { $ref: "#/$defs/Description" }
+      display_name: {$ref: "#/$defs/DisplayName"}
+      description: {$ref: "#/$defs/Description"}
       mountable_resources:
         type: array
         minItems: 2
         uniqueItems: true
         description: Resource identifiers participating in this relation group.
-        items: { $ref: "#/$defs/Identifier" }
+        items: {$ref: "#/$defs/Identifier"}
       relations:
         type: array
         minItems: 1
         uniqueItems: true
         description: Independent relation predicates applied to the same resource set.
-        items: { $ref: "#/$defs/MountableResourceRelationType" }
-      requirement: { $ref: "#/$defs/MountableResourceRelationRequirement" }
+        items: {$ref: "#/$defs/MountableResourceRelationType"}
+      requirement: {$ref: "#/$defs/MountableResourceRelationRequirement"}
 
   Qcow2Backend:
     title: QCOW2 backend
@@ -412,8 +423,8 @@ $defs:
     additionalProperties: false
     required: [type, description, directory]
     properties:
-      type: { const: QCOW2 }
-      description: { $ref: "#/$defs/Description" }
+      type: {const: QCOW2}
+      description: {$ref: "#/$defs/Description"}
       directory:
         type: string
         minLength: 1
@@ -425,8 +436,8 @@ $defs:
     additionalProperties: false
     required: [type, description, directory]
     properties:
-      type: { const: RAW_FILE }
-      description: { $ref: "#/$defs/Description" }
+      type: {const: RAW_FILE}
+      description: {$ref: "#/$defs/Description"}
       directory:
         type: string
         minLength: 1
@@ -438,8 +449,8 @@ $defs:
     additionalProperties: false
     required: [type, description, volume_group]
     properties:
-      type: { const: LVM }
-      description: { $ref: "#/$defs/Description" }
+      type: {const: LVM}
+      description: {$ref: "#/$defs/Description"}
       volume_group:
         type: string
         minLength: 1
@@ -451,8 +462,8 @@ $defs:
     additionalProperties: false
     required: [type, description, directory]
     properties:
-      type: { const: DIRECTORY }
-      description: { $ref: "#/$defs/Description" }
+      type: {const: DIRECTORY}
+      description: {$ref: "#/$defs/Description"}
       directory:
         type: string
         minLength: 1
@@ -462,40 +473,40 @@ $defs:
     title: BlockBackend
     description: Backend implementations valid for BLOCK representation.
     oneOf:
-      - { $ref: "#/$defs/Qcow2Backend" }
-      - { $ref: "#/$defs/RawFileBackend" }
-      - { $ref: "#/$defs/LvmBackend" }
+    - {$ref: "#/$defs/Qcow2Backend"}
+    - {$ref: "#/$defs/RawFileBackend"}
+    - {$ref: "#/$defs/LvmBackend"}
 
   FilesystemBackend:
     title: FilesystemBackend
     description: Backend implementations valid for FILESYSTEM representation.
     oneOf:
-      - { $ref: "#/$defs/DirectoryBackend" }
+    - {$ref: "#/$defs/DirectoryBackend"}
 
   HostStorageTargetRepresentation:
     title: HostStorageTargetRepresentation
     description: Host capability to realize one guest representation with one or more backends.
     oneOf:
-      - type: object
-        additionalProperties: false
-        required: [type, description, supported_backends]
-        properties:
-          type: { const: BLOCK }
-          description: { $ref: "#/$defs/Description" }
-          supported_backends:
-            type: array
-            minItems: 1
-            items: { $ref: "#/$defs/BlockBackend" }
-      - type: object
-        additionalProperties: false
-        required: [type, description, supported_backends]
-        properties:
-          type: { const: FILESYSTEM }
-          description: { $ref: "#/$defs/Description" }
-          supported_backends:
-            type: array
-            minItems: 1
-            items: { $ref: "#/$defs/FilesystemBackend" }
+    - type: object
+      additionalProperties: false
+      required: [type, description, supported_backends]
+      properties:
+        type: {const: BLOCK}
+        description: {$ref: "#/$defs/Description"}
+        supported_backends:
+          type: array
+          minItems: 1
+          items: {$ref: "#/$defs/BlockBackend"}
+    - type: object
+      additionalProperties: false
+      required: [type, description, supported_backends]
+      properties:
+        type: {const: FILESYSTEM}
+        description: {$ref: "#/$defs/Description"}
+        supported_backends:
+          type: array
+          minItems: 1
+          items: {$ref: "#/$defs/FilesystemBackend"}
 
   HostStorageTarget:
     title: HostStorageTarget
@@ -506,17 +517,17 @@ $defs:
     additionalProperties: false
     required: [display_name, description, storage_class, storage_system, supported_representations]
     properties:
-      display_name: { $ref: "#/$defs/DisplayName" }
-      description: { $ref: "#/$defs/Description" }
-      storage_class: { $ref: "#/$defs/MountableResourceStorageClass" }
+      display_name: {$ref: "#/$defs/DisplayName"}
+      description: {$ref: "#/$defs/Description"}
+      storage_class: {$ref: "#/$defs/MountableResourceStorageClass"}
       storage_system:
         description: >
           HOST_LOCAL_STORAGE or an external storage-system id from the environment.
           HOST_LOCAL_STORAGE is implicit, unique per host and never declared in
           environment.storage_systems.
         anyOf:
-          - const: HOST_LOCAL_STORAGE
-          - { $ref: "#/$defs/Identifier" }
+        - const: HOST_LOCAL_STORAGE
+        - {$ref: "#/$defs/Identifier"}
       impacted_devices:
         type: array
         minItems: 1
@@ -524,7 +535,7 @@ $defs:
         description: >
           Every known physical/logical device layer that can affect this target.
           Omission means UNKNOWN topology, not an empty dependency set.
-        items: { $ref: "#/$defs/Identifier" }
+        items: {$ref: "#/$defs/Identifier"}
       impacted_controllers:
         type: array
         minItems: 1
@@ -532,9 +543,30 @@ $defs:
         description: >
           Every known storage/I/O controller that can affect this target.
           Omission means UNKNOWN topology, not an empty dependency set.
-        items: { $ref: "#/$defs/Identifier" }
+        items: {$ref: "#/$defs/Identifier"}
       supported_representations:
         type: array
         minItems: 1
-        items: { $ref: "#/$defs/HostStorageTargetRepresentation" }
+        items: {$ref: "#/$defs/HostStorageTargetRepresentation"}
+  ConfigVersion:
+    title: ConfigVersion
+    description: Stable user-assigned version identifier of one configuration entity snapshot. It is independent from 
+      application, service, OS or package versions.
+    type: string
+    pattern: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+  ConfigVersionState:
+    title: ConfigVersionState
+    description: User-defined lifecycle state of a configuration version, for example DEVELOPMENT, TESTED or RELEASED. 
+      Orchestrator treats the value as a symbolic policy label and does not assign built-in lifecycle semantics.
+    type: string
+    pattern: ^[A-Za-z][A-Za-z0-9._-]*$
+  ServiceConfigurationReferences:
+    title: ServiceConfigurationReferences
+    description: Named service roles consumed or provided by a host or guest. Each role resolves one exact 
+      ServiceConfiguration version.
+    type: object
+    propertyNames:
+      $ref: '#/$defs/Identifier'
+    additionalProperties:
+      $ref: '#/$defs/ConfigurationReference'
 

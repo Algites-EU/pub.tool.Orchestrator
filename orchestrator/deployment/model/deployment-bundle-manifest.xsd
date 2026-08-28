@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:include schemaLocation="common.xsd"/>
   <xs:complexType name="AttachmentType">
     <xs:sequence>
       <xs:element name="category" type="xs:string"/>
-      <xs:element name="reference" type="xs:string"/>
+      <xs:element name="reference" type="ConfigurationReferencePathType"/>
+      <xs:element name="reference_config_version" type="ConfigVersionType"/>
       <xs:element name="path" type="xs:string"/>
     </xs:sequence>
   </xs:complexType>
@@ -15,7 +17,8 @@
   <xs:complexType name="DeploymentType">
     <xs:sequence>
       <xs:element name="id" type="xs:string"/>
-      <xs:element name="reference" type="xs:string"/>
+      <xs:element name="reference" type="ConfigurationReferencePathType"/>
+      <xs:element name="reference_config_version" type="ConfigVersionType"/>
       <xs:element name="deployment_plan" type="xs:string"/>
       <xs:element name="attachments" type="AttachmentsType"/>
     </xs:sequence>

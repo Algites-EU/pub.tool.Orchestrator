@@ -1,0 +1,12 @@
+model_version: 1
+service:
+  id: example-artifact-cache
+  display_name: Example Artifact Cache
+  description: Demonstration logical cache service used to exercise versioned provider and consumer service references.
+  config_version: '1.0'
+  config_version_state: RELEASED
+network_service_bindings:
+  cache-api:
+    application_protocol: HTTP
+    transport_protocol: TCP
+    port: 8080

@@ -28,11 +28,11 @@ forms execute the same implementation.
 Examples:
 
 ```bash
-algites-orchestrator create-deployment-plan --deployment=production/main
-algites-orchestrator cdp -d=production/main
+algites-orchestrator create-deployment-plan --deployment=production/main@1.0
+algites-orchestrator cdp -d=production/main@1.0
 
-algites-orchestrator create-deployment-bundle -d=production/main -ofn=production.zip
-algites-orchestrator cdb -d=production/main -ofn=production.zip
+algites-orchestrator create-deployment-bundle -d=production/main@1.0 -ofn=production.zip
+algites-orchestrator cdb -d=production/main@1.0 -ofn=production.zip
 
 algites-orchestrator validate-configuration
 algites-orchestrator vc
@@ -63,23 +63,25 @@ configuration categories cannot create accidental alias collisions.
 Syntax:
 
 ```bash
-algites-orchestrator create-deployment-plan [options] --deployment=<reference>
-algites-orchestrator cdp [options] -d=<reference>
+algites-orchestrator create-deployment-plan [options] --deployment=<reference>@<config_version>
+algites-orchestrator cdp [options] -d=<reference>@<config_version>
 ```
 
-Exactly one deployment reference is accepted. It may be an unqualified id or an
-exact category-relative reference.
+Exactly one deployment reference and exact configuration version are accepted.
+The reference part may be an unqualified id or an exact category-relative reference.
+The CLI compact form uses `<reference>@<config_version>`; configuration documents
+represent the same information as separate `reference` and `reference_config_version` fields.
 
 Examples:
 
 ```bash
 algites-orchestrator cdp \
   -cr=/srv/algites/config \
-  -d=production/main
+  -d=production/main@1.0
 
 algites-orchestrator cdp \
   -cr=/srv/algites/config \
-  -d=production/main \
+  -d=production/main@1.0 \
   -of=/tmp/run-001 \
   -ofn=deployment-plan.xml \
   -ofmt=xml
@@ -88,9 +90,9 @@ algites-orchestrator cdp \
 The command:
 
 1. resolves the requested `GuestDeploymentConfiguration`,
-2. resolves its referenced `GuestConfiguration`, `HostConfiguration` and
+2. resolves its exact referenced versions of `GuestConfiguration`, `HostConfiguration` and
    `DeploymentEnvironmentConfiguration`,
-3. resolves referenced `SharedMountableResourceConfiguration` entities,
+3. resolves referenced `SharedMountableResourceConfiguration` and `ServiceConfiguration` versions,
 4. validates every loaded configuration against its JSON Schema,
 5. validates cross-configuration constraints,
 6. validates package-relative guest OS configuration paths,
@@ -110,27 +112,30 @@ contain the physical attachment files owned by the involved configuration
 entities. Use `create-deployment-bundle` when a portable execution artifact is
 required.
 
-The plan records the canonical environment and the resolved guest OS contract,
-for example:
+The plan records the canonical environment and both resolved operating-system
+types, for example:
 
 ```yaml
-environment: example-environment
+environment:
+  reference: example-environment
+  reference_config_version: "1.0"
 resolved_os:
   type: NIXOS
-  configuration_path: nixos/
+resolved_host_os:
+  type: DEBIAN
 ```
 
-`configuration_path` remains relative to the referenced guest Configuration
-Entity Package. This keeps an individual plan independent of the absolute path
-of the machine on which it was created.
+Operating-system attachment paths are framework conventions rather than YAML
+configuration: `NIXOS` selects `nixos/`, `DEBIAN` selects `debian/`, and the
+same lowercase mapping is used for the other supported OS enum values.
 
 ### 3.2 `create-deployment-bundle` / `cdb`
 
 Syntax:
 
 ```bash
-algites-orchestrator create-deployment-bundle [options] --deployment=<reference> [--deployment=<reference> ...]
-algites-orchestrator cdb [options] -d=<reference> [-d=<reference> ...]
+algites-orchestrator create-deployment-bundle [options] --deployment=<reference>@<config_version> [--deployment=<reference>@<config_version> ...]
+algites-orchestrator cdb [options] -d=<reference>@<config_version> [-d=<reference>@<config_version> ...]
 ```
 
 `--deployment` / `-d` is repeatable. One bundle can therefore contain one or
@@ -139,9 +144,9 @@ more deployments:
 ```bash
 algites-orchestrator cdb \
   -cr=/srv/algites/config \
-  -d=production/app01 \
-  -d=production/app02 \
-  -d=infrastructure/cache01 \
+  -d=production/app01@1.0 \
+  -d=production/app02@1.0 \
+  -d=infrastructure/cache01@1.0 \
   -ofn=production.zip
 ```
 
@@ -194,7 +199,7 @@ by that deployment:
 ```bash
 algites-orchestrator vc \
   -cr=/srv/algites/config \
-  -d=production/main
+  -d=production/main@1.0
 ```
 
 Unrelated entity definitions are not parsed by closure validation. Discovery
@@ -214,6 +219,8 @@ Callers that only need success/failure should use the exit code.
 | `--config-folder-guests-name` | `-cfgn` | `guests` | Guest configuration folder below config root. |
 | `--config-folder-hosts-name` | `-cfhn` | `hosts` | Host configuration folder below config root. |
 | `--config-folder-shared-mountable-resources-name` | `-cfsmrn` | `shared-mountable-resources` | Shared mountable-resource configuration folder below config root. |
+| `--config-folder-services-name` | `-cfsn` | `services` | Service configuration folder below config root. |
+| `--allow-config-version-state` | `-acvs` | none | Repeatable whitelist of `config_version_state` values allowed in a resolved deployment closure. If omitted, version states are not restricted. |
 | `--output-folder` | `-of` | current directory | Base directory for relative result and processing-info paths. |
 | `--output-file-name` | `-ofn` | none | Result file. If omitted, the result is written to stdout. |
 | `--processing-info-file-name` | `-pifn` | none | Optional persistent copy of the diagnostic stream. |
@@ -228,75 +235,101 @@ Callers that only need success/failure should use the exit code.
 intentionally no `OFF` log level; errors remain visible unless stderr is
 explicitly redirected or discarded by the caller.
 
-## 5. Configuration Entity Packages
+## 5. Versioned Configuration Entity Packages
 
-Every top-level configuration entity is represented by a directory package, not
-by a loose YAML file.
+Every top-level configuration entity is represented by a stable entity directory
+containing one or more version package directories. A loose YAML file is never a
+configuration entity.
 
 The invariant is:
 
 ```text
 <entity-id>/
-├── <entity-id>.yml
-└── ... zero or more entity-owned attachment files/directories ...
+└── <config-version>/
+    ├── <entity-id>_<config-version>.yml
+    └── ... zero or more version-owned attachments ...
 ```
 
-The package directory name, YAML file base name and stable entity `id` must all
-be identical.
+The stable entity directory name must equal the entity `id`. The version directory
+name must equal the entity `config_version`, and the YAML filename must be
+`<id>_<config_version>.yml`. Multiple versions of the same stable entity may coexist.
 
 Example:
 
 ```text
 config/
 ├── deployments/
-│   ├── production/
-│   │   └── main/
-│   │       ├── main.yml
-│   │       └── templates/
-│   └── testing/
-│       └── test01/
-│           └── test01.yml
+│   └── production/
+│       └── main/
+│           ├── 13.0/
+│           │   └── main_13.0.yml
+│           └── 14.0/
+│               ├── main_14.0.yml
+│               └── templates/
 ├── environments/
 │   └── dc01/
-│       └── dc01.yml
+│       └── 2.0/
+│           └── dc01_2.0.yml
 ├── hosts/
-│   ├── site01/
-│   │   ├── hostA/
-│   │   │   ├── hostA.yml
-│   │   │   └── scripts/
-│   │   └── hostB/
-│   │       └── hostB.yml
-│   └── site02/
+│   └── site01/
 │       └── hostA/
-│           └── hostA.yml
+│           ├── 7/
+│           │   ├── hostA_7.yml
+│           │   └── debian/
+│           │       └── apt/packages.list
+│           └── 8/
+│               ├── hostA_8.yml
+│               ├── debian/
+│               │   └── apt/packages.list
+│               └── scripts/
 ├── guests/
 │   └── development/
 │       └── codex/
-│           ├── codex.yml
-│           └── nixos/
-│               ├── default.nix
-│               ├── packages.nix
-│               └── services.nix
+│           └── 14.0/
+│               ├── codex_14.0.yml
+│               └── nixos/
+│                   ├── default.nix
+│                   ├── packages.nix
+│                   └── services.nix
+├── services/
+│   └── database/
+│       └── postgresql/
+│           └── 7/
+│               ├── postgresql_7.yml
+│               ├── common/
+│               │   ├── nixos/
+│               │   └── debian/
+│               ├── consumer/
+│               │   ├── nixos/
+│               │   └── debian/
+│               └── provider/
+│                   ├── nixos/
+│                   └── debian/
 └── shared-mountable-resources/
     └── cache/
-        └── cache.yml
+        └── 3/
+            └── cache_3.yml
 ```
 
-A directory `X` is recognized as a Configuration Entity Package when it directly
-contains `X.yml`. Once discovered, the complete subtree below that directory is
-owned by the entity and is **not** recursively scanned for additional
-Orchestrator entities. This allows arbitrary future attachment trees such as
-NixOS modules, templates, scripts and auxiliary YAML files.
+An entity directory is recognized when one or more direct version subdirectories
+contain matching `<entity-id>_<version>.yml` definitions. Once recognized, each
+version directory is a Configuration Entity Package and its complete subtree is
+owned by that version; attachment YAML below it is not recursively discovered as
+an Orchestrator entity. Directories above the entity directory remain namespaces.
 
-Directories that do not contain a same-named `.yml` definition are namespaces.
+`ServiceConfiguration` version packages have one additional fixed rule: `common/`,
+`consumer/` and `provider/` directories must all exist. Definition files are not
+placed directly in those branches; each branch contains supported operating-system
+implementation subdirectories such as `nixos/` or `debian/`. A service role is
+resolvable for a target only when its `consumer/<os>/` or `provider/<os>/`
+implementation exists. A matching `common/<os>/` directory is optional and, when
+present, is applied in addition to the role-specific implementation.
 
-Loose configuration YAML files outside a Configuration Entity Package are
-invalid. The `.yaml` spelling is not accepted for the entity-definition file.
-
-Category folder options are relative paths below `--config-root`. Absolute
-category-folder paths and `.` / `..` components are rejected. Entity definitions
-reached through symlinks must still resolve below the corresponding category
-root.
+Loose configuration YAML files outside a version package are invalid. The `.yaml`
+spelling is not accepted for entity-definition files. Category folder options are
+relative paths below `--config-root`; absolute category paths and `.` / `..`
+components are rejected. Symlinks must remain inside the corresponding category
+or entity version package.
 
 ## 6. Package-relative attachments
 
@@ -306,10 +339,11 @@ For example a NixOS guest can contain:
 
 ```text
 guests/development/codex/
-├── codex.yml
-└── nixos/
-    ├── default.nix
-    └── services.nix
+└── 1.0/
+    ├── codex_1.0.yml
+    └── nixos/
+        ├── default.nix
+        └── services.nix
 ```
 
 with:
@@ -317,81 +351,125 @@ with:
 ```yaml
 os:
   type: NIXOS
-  configuration_path: nixos/
 ```
 
-Package-relative paths:
+The `nixos/` directory name is derived from `os.type` and therefore is not
+repeated as a path field in YAML. A Debian host or guest analogously uses
+`os.type: DEBIAN` and a `debian/` package attachment directory. Under Debian,
+`debian/apt/packages.list` is the Orchestrator convention for package selections:
+one non-comment APT package selection per line. The future execution layer can
+pass those selections to `apt-get install`, which installs missing packages and
+upgrades listed installed packages when a newer configured candidate is available.
+An exact APT version may be expressed using the native `package=version` syntax.
 
-- use `/`,
-- may not be absolute,
-- may not contain `.` or `..` components,
-- may not escape the Configuration Entity Package,
-- must exist when referenced by the current model.
+All package attachments must remain inside their Configuration Entity Package;
+absolute paths and traversal outside the package are not allowed.
 
 A DeploymentBundle copies the entire entity package, not only the explicitly
 referenced path. This makes the bundle forward-compatible with additional
 entity-owned deployment inputs.
 
-## 7. Configuration references and namespaces
+## 7. Configuration versions, references and namespaces
 
-Cross-file references use `ConfigurationReference`, separate from the stable
-entity `Identifier`.
+Every source configuration entity is versioned. Its stable identity remains the
+category-relative entity reference, while `config_version` selects one concrete
+configuration definition. Each entity definition also carries a user-defined
+`config_version_state` lifecycle label.
+
+The repository layout is:
+
+```text
+<category>/<namespace>/<entity-id>/<config-version>/<entity-id>_<config-version>.yml
+```
+
+For example:
+
+```text
+hosts/site01/hostA/1.0/hostA_1.0.yml
+guests/development/codex/14.0/codex_14.0.yml
+services/database/postgresql/7/postgresql_7.yml
+```
+
+The directory version, YAML `config_version`, and filename version must match.
+`config_version` is an Orchestrator configuration version and is independent of
+application, package, operating-system or service runtime versions.
+
+Cross-file references use the structured `ConfigurationReference` form:
+
+```yaml
+host:
+  reference: site01/hostA
+  reference_config_version: "1.0"
+```
+
+The `reference` field never contains the version. The second field always selects
+the exact `config_version` of the referenced entity. The CLI alone offers the
+compact equivalent `site01/hostA@1.0`.
 
 ### 7.1 Exact qualified reference
 
 ```yaml
-host: site01/hostA
+host:
+  reference: site01/hostA
+  reference_config_version: "1.0"
 ```
 
-This resolves only to the entity package:
+This resolves only to:
 
 ```text
-<config-root>/<hosts-folder>/site01/hostA/hostA.yml
+<config-root>/<hosts-folder>/site01/hostA/1.0/hostA_1.0.yml
 ```
 
-If that package does not exist, resolution fails. There is no fuzzy fallback.
+If either the entity or the selected version does not exist, resolution fails.
+There is no fuzzy version fallback and no implicit `latest`.
 
 ### 7.2 Unqualified reference
 
 ```yaml
-host: hostA
+host:
+  reference: hostA
+  reference_config_version: "1.0"
 ```
 
-The complete category tree is indexed by entity package id.
-
-Resolution rules are deterministic:
+The complete category tree is indexed by stable entity id and config version.
+For the requested version the resolution rules are deterministic:
 
 ```text
-0 matches  -> unresolved reference error
-1 match    -> use that entity package
+0 matches  -> unresolved reference/version error
+1 match    -> use that entity version
 2+ matches -> ambiguous reference error
 ```
 
 For example:
 
 ```text
-hosts/site01/hostA/hostA.yml
-hosts/site02/hostA/hostA.yml
+hosts/site01/hostA/1.0/hostA_1.0.yml
+hosts/site02/hostA/1.0/hostA_1.0.yml
 ```
 
-makes `host: hostA` ambiguous while `host: site01/hostA` resolves exactly.
+makes unqualified `hostA` version `1.0` ambiguous while `site01/hostA` version
+`1.0` resolves exactly. This rule applies uniformly to deployments, environments,
+hosts, guests, services and shared mountable resources.
 
-This rule applies uniformly to deployments, environments, hosts, guests and
-shared mountable resources.
+### 7.3 Version-state policy
 
-### 7.3 Reference syntax restrictions
+`config_version_state` is a user-defined symbolic label such as `DEVELOPMENT`,
+`TESTED` or `RELEASED`; Orchestrator does not assign built-in semantics to those
+values. `--allow-config-version-state` / `-acvs` is repeatable and, when present,
+forms a whitelist checked across the complete resolved configuration closure.
+
+```bash
+algites-orchestrator cdb \
+  -d=production/main@14.0 \
+  -acvs=RELEASED
+```
+
+### 7.4 Reference syntax restrictions
 
 Configuration references are logical category-relative paths, not arbitrary
-filesystem paths. They:
-
-- use `/` as separator,
-- are case-sensitive,
-- cannot start with `/`,
-- cannot contain `.` or `..` components,
-- cannot escape their configuration category.
-
-Generated plans store canonical category-relative references so their entity
-identities remain unambiguous.
+filesystem paths. They use `/`, are case-sensitive, cannot start with `/`, and
+cannot contain `.` or `..` components. `config_version` is a separate string
+identifier and may contain letters, digits, `.`, `_` and `-`.
 
 ## 8. DeploymentPlan
 
@@ -431,11 +509,7 @@ It is a ZIP archive with this root:
 deployment-bundle/
 ```
 
-For a deployment reference:
-
-```text
-aaa/bbb/my-guest-deployment
-```
+For deployment reference `aaa/bbb/my-guest-deployment` and config version `12.0`:
 
 the YAML variant is conceptually:
 
@@ -443,31 +517,30 @@ the YAML variant is conceptually:
 deployment-bundle/
 ├── manifest.yml
 └── deployments/
-    └── aaa/
-        └── bbb/
-            └── my-guest-deployment/
-                ├── my-guest-deployment_deployment-plan.yml
-                ├── environment/
-                │   └── <canonical-environment-reference>/
-                │       ├── <environment-id>.yml
-                │       └── ... attachments ...
-                ├── host/
-                │   └── <canonical-host-reference>/
-                │       ├── <host-id>.yml
-                │       └── ... attachments ...
-                ├── guest/
-                │   └── <canonical-guest-reference>/
-                │       ├── <guest-id>.yml
-                │       ├── nixos/
-                │       └── ...
-                ├── guest-deployment/
-                │   └── aaa/bbb/my-guest-deployment/
-                │       ├── my-guest-deployment.yml
-                │       └── ... attachments ...
-                └── shared-mountable-resource/
-                    └── <canonical-resource-reference>/
-                        ├── <resource-id>.yml
-                        └── ... attachments ...
+    └── aaa/bbb/my-guest-deployment/
+        └── 12.0/
+            ├── my-guest-deployment_12.0_deployment-plan.yml
+            ├── environment/<canonical-environment-reference>/<config-version>/
+            │   ├── <environment-id>_<config-version>.yml
+            │   └── ... attachments ...
+            ├── host/<canonical-host-reference>/<config-version>/
+            │   ├── <host-id>_<config-version>.yml
+            │   └── ... attachments ...
+            ├── guest/<canonical-guest-reference>/<config-version>/
+            │   ├── <guest-id>_<config-version>.yml
+            │   ├── nixos/
+            │   └── ... attachments ...
+            ├── guest-deployment/aaa/bbb/my-guest-deployment/12.0/
+            │   ├── my-guest-deployment_12.0.yml
+            │   └── ... attachments ...
+            ├── service/<canonical-service-reference>/<config-version>/
+            │   ├── <service-id>_<config-version>.yml
+            │   ├── common/<os>/
+            │   ├── consumer/<os>/
+            │   └── provider/<os>/
+            └── shared-mountable-resource/<canonical-resource-reference>/<config-version>/
+                ├── <resource-id>_<config-version>.yml
+                └── ... attachments ...
 ```
 
 The exact set of copied package categories is derived from the transitive
@@ -601,8 +674,8 @@ For `cdb`, stdout is a **binary ZIP stream**:
 ```bash
 algites-orchestrator cdb \
   -cr=config \
-  -d=production/app01 \
-  -d=production/app02 \
+  -d=production/app01@1.0 \
+  -d=production/app02@1.0 \
   > deployment-bundle.zip \
   2> processing.log
 ```
@@ -614,7 +687,7 @@ stream.
 Typical plan piping therefore remains possible:
 
 ```bash
-algites-orchestrator cdp -cr=config -d=production/main | another-command
+algites-orchestrator cdp -cr=config -d=production/main@1.0 | another-command
 ```
 
 while a bundle can be redirected or piped to a binary-aware consumer.
@@ -666,7 +739,7 @@ suppress stderr.
 ```bash
 algites-orchestrator cdp \
   -cr=config \
-  -d=production/main \
+  -d=production/main@1.0 \
   -pifn=processing.log
 ```
 
@@ -740,16 +813,16 @@ execution happen in one process/environment.
 From a source checkout:
 
 ```bash
-python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment
-python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment -ofmt=xml
-python3 -m orchestrator cdb -cr=examples/config -d=example-guest-deployment -ofn=example.zip
+python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment@1.0
+python3 -m orchestrator cdp -cr=examples/config -d=example-guest-deployment@1.0 -ofmt=xml
+python3 -m orchestrator cdb -cr=examples/config -d=example-guest-deployment@1.0 -ofn=example.zip
 python3 -m orchestrator vc -cr=examples/config
 ```
 
 After installation as a Python package:
 
 ```bash
-algites-orchestrator cdp -cr=examples/config -d=example-guest-deployment
+algites-orchestrator cdp -cr=examples/config -d=example-guest-deployment@1.0
 ```
 
 The package requires Python 3.11 or newer, PyYAML and jsonschema. XML

@@ -1,0 +1,47 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://algites.eu/orchestrator/deployment/model/v1/service-configuration.schema.yml
+title: Algites Orchestrator ServiceConfiguration
+description: Defines a reusable versioned service contract. The version package always contains common/, consumer/ and
+  provider/ branches. Each branch contains operating-system implementation subdirectories such as nixos/ or debian/;
+  concrete package and configuration details remain authoritative in those attachments.
+type: object
+additionalProperties: false
+required:
+- model_version
+- service
+- network_service_bindings
+properties:
+  model_version:
+    const: 1
+    description: Version of the Algites Orchestrator deployment model.
+  service:
+    type: object
+    additionalProperties: false
+    required:
+    - id
+    - display_name
+    - description
+    - config_version
+    - config_version_state
+    properties:
+      id:
+        $ref: common.schema.yml#/$defs/Identifier
+        description: Stable identity of the service definition across configuration versions.
+      display_name:
+        $ref: common.schema.yml#/$defs/DisplayName
+      description:
+        $ref: common.schema.yml#/$defs/Description
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this ServiceConfiguration definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this ServiceConfiguration version.
+  network_service_bindings:
+    type: object
+    propertyNames:
+      $ref: common.schema.yml#/$defs/Identifier
+    additionalProperties:
+      $ref: common.schema.yml#/$defs/NetworkServiceBinding
+    description: Named network services exposed by or required for this logical service. Empty object is allowed for 
+      services without a network endpoint.

@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
-from orchestrator.common.configuration import ConfigurationEntry, ConfigurationRepository
+from orchestrator.common.configuration import (
+    ConfigurationEntry,
+    ConfigurationRepository,
+    operating_system_implementation_directory,
+)
 from orchestrator.common.errors import ConfigurationValidationError, ResolutionError
 from .sizes import size_to_bytes
 
@@ -31,8 +35,14 @@ class DeploymentResolver:
         self.plan_schema_validator = plan_schema_validator
         self.logger = logger or logging.getLogger("algites_orchestrator")
 
-    def resolve(self, deployment_reference: str) -> dict[str, Any]:
-        deployment_entry, deployment = self.repository.resolve("deployments", deployment_reference)
+    def resolve(
+        self, deployment_reference: str, deployment_config_version: str,
+        allowed_config_version_states: set[str] | None = None,
+    ) -> dict[str, Any]:
+        self.repository.clear_access_log()
+        deployment_entry, deployment = self.repository.resolve(
+            "deployments", deployment_reference, deployment_config_version
+        )
         guest_entry, guest = self.repository.resolve("guests", deployment["guest"])
         host_entry, host = self.repository.resolve("hosts", deployment["host"])
         environment_entry, environment = self.repository.resolve("environments", host["environment"])
@@ -47,27 +57,91 @@ class DeploymentResolver:
             deployment_entry, deployment, guest, host_entry, host, environment_entry, environment
         )
         relation_results, warnings = self._resolve_relations(guest, facts)
+        resolved_services = self._resolve_services(guest, host)
+        self._validate_allowed_config_version_states(allowed_config_version_states)
 
         resolved_os = {"type": guest["os"]["type"]}
-        if "configuration_path" in guest["os"]:
-            resolved_os["configuration_path"] = guest["os"]["configuration_path"]
+        resolved_host_os = {"type": host["os"]["type"]}
 
         plan = {
             "model_version": 1,
-            "deployment": deployment_entry.reference,
-            "guest": guest_entry.reference,
-            "host": host_entry.reference,
-            "environment": environment_entry.reference,
+            "deployment": self.repository.make_reference(deployment_entry),
+            "guest": self.repository.make_reference(guest_entry),
+            "host": self.repository.make_reference(host_entry),
+            "environment": self.repository.make_reference(environment_entry),
             "resolved_os": resolved_os,
+            "resolved_host_os": resolved_host_os,
             "resolved_compute": self._resolve_compute(deployment, guest),
             "resolved_network_interfaces": resolved_networks,
             "resolved_management_endpoint": resolved_management_endpoint,
+            "resolved_services": resolved_services,
             "resolved_mountable_resources": resolved_resources,
             "relation_results": relation_results,
             "warnings": warnings,
         }
         self.plan_schema_validator.validate(plan, "deployment-plan.schema.yml", "generated DeploymentPlan")
         return plan
+
+    def _resolve_services(self, guest: dict[str, Any], host: dict[str, Any]) -> dict[str, Any]:
+        groups = {
+            "guest_consumed": (guest.get("consumed_services", {}), guest["os"]["type"], "consumer"),
+            "guest_provided": (guest.get("provided_services", {}), guest["os"]["type"], "provider"),
+            "host_consumed": (host.get("consumed_services", {}), host["os"]["type"], "consumer"),
+            "host_provided": (host.get("provided_services", {}), host["os"]["type"], "provider"),
+        }
+        resolved: dict[str, dict[str, Any]] = {}
+        for group_name, (references, target_os, role_branch) in groups.items():
+            resolved_group: dict[str, Any] = {}
+            for role, reference in references.items():
+                entry, _service = self.repository.resolve("services", reference)
+                resolved_group[role] = {
+                    "service_configuration": self.repository.make_reference(entry),
+                    "implementation": self._resolve_service_implementation(entry, target_os, role_branch),
+                }
+            resolved[group_name] = resolved_group
+        return resolved
+
+    def _resolve_service_implementation(
+        self, entry: ConfigurationEntry, target_os: str, role_branch: str
+    ) -> dict[str, Any]:
+        os_directory = operating_system_implementation_directory(target_os)
+        role_path = f"{role_branch}/{os_directory}/"
+        role_directory = entry.package_path / role_branch / os_directory
+        if not role_directory.is_dir():
+            raise ConfigurationValidationError(
+                f"Service configuration '{entry.reference}@{entry.config_version}' does not provide a "
+                f"{role_branch} implementation for operating system {target_os}; expected directory '{role_path}'."
+            )
+        implementation: dict[str, Any] = {
+            "os_type": target_os,
+            "role_path": role_path,
+        }
+        common_path = f"common/{os_directory}/"
+        if (entry.package_path / "common" / os_directory).is_dir():
+            implementation["common_path"] = common_path
+        return implementation
+
+    def _validate_allowed_config_version_states(self, allowed_states: set[str] | None) -> None:
+        if not allowed_states:
+            return
+        violations: list[str] = []
+        for entry in self.repository.accessed_entries():
+            document = self.repository.load_entry(entry)
+            category = self.repository.categories[entry.category]
+            entity: Any = document
+            for key_part in category.entity_path[:-1]:
+                entity = entity[key_part]
+            state = entity["config_version_state"]
+            if state not in allowed_states:
+                violations.append(
+                    f"{entry.category}:{entry.reference}@{entry.config_version} has state '{state}'"
+                )
+        if violations:
+            allowed = ", ".join(sorted(allowed_states))
+            raise ConfigurationValidationError(
+                "Configuration closure contains config version states that are not allowed "
+                f"(allowed: {allowed}):\n  - " + "\n  - ".join(sorted(violations))
+            )
 
     def _validate_environment(self, environment: dict[str, Any]) -> None:
         sites = environment["sites"]
@@ -96,6 +170,7 @@ class DeploymentResolver:
         environment_entry: ConfigurationEntry,
         environment: dict[str, Any],
     ) -> None:
+        self._validate_entity_os_implementation(host_entry, host["os"]["type"])
         host_id = host["host"]["id"]
         if host_id not in environment["hosts"]:
             raise ConfigurationValidationError(
@@ -131,10 +206,8 @@ class DeploymentResolver:
                 )
 
     def _validate_guest(self, guest: dict[str, Any], guest_entry: ConfigurationEntry | None = None) -> None:
-        if guest_entry is not None and guest.get("os", {}).get("configuration_path"):
-            self.repository.resolve_package_relative_path(
-                guest_entry, guest["os"]["configuration_path"], require_exists=True
-            )
+        if guest_entry is not None:
+            self._validate_entity_os_implementation(guest_entry, guest["os"]["type"])
         resources = guest["mountable_resources"]["items"]
         for relation in guest["mountable_resources"]["relations"]:
             for resource_id in relation["mountable_resources"]:
@@ -154,6 +227,16 @@ class DeploymentResolver:
                 raise ConfigurationValidationError(
                     f"Mountable resource '{resource_id}' capacity.default cannot be smaller than capacity.minimum."
                 )
+
+    @staticmethod
+    def _validate_entity_os_implementation(entry: ConfigurationEntry, os_type: str) -> None:
+        implementation_directory = operating_system_implementation_directory(os_type)
+        path = entry.package_path / implementation_directory
+        if not path.is_dir():
+            raise ConfigurationValidationError(
+                f"Configuration package '{entry.reference}@{entry.config_version}' declares operating system {os_type} "
+                f"but does not contain the framework implementation directory '{implementation_directory}/'."
+            )
 
     def _validate_compute(self, deployment: dict[str, Any], guest: dict[str, Any]) -> None:
         resolved = self._resolve_compute(deployment, guest)
@@ -411,7 +494,7 @@ class DeploymentResolver:
             )
         storage_identity = self._storage_identity(target, host_entry.reference)
         result = self._base_resolved_resource(requirement, target_id, storage_identity, backend, size)
-        result["shared_mountable_resource"] = shared_entry.reference
+        result["shared_mountable_resource"] = self.repository.make_reference(shared_entry)
         if requirement["representation"] == "FILESYSTEM":
             provider_id = shared.get("host_mountable_resource_interface")
             result["interface"] = self._resolve_interface(

@@ -12,14 +12,14 @@ description: >
 type: object
 additionalProperties: false
 required:
-  - model_version
-  - deployment
-  - guest
-  - host
-  - compute
-  - network_interfaces
-  - management_endpoint_interface_binding
-  - mountable_resources
+- model_version
+- deployment
+- guest
+- host
+- compute
+- network_interfaces
+- management_endpoint_interface_binding
+- mountable_resources
 properties:
 
   model_version:
@@ -32,9 +32,11 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - id
-      - display_name
-      - description
+    - id
+    - display_name
+    - description
+    - config_version
+    - config_version_state
     properties:
       id:
         $ref: "common.schema.yml#/$defs/Identifier"
@@ -43,6 +45,12 @@ properties:
       description:
         $ref: "common.schema.yml#/$defs/Description"
 
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this configuration entity definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this configuration version.
   guest:
     $ref: "common.schema.yml#/$defs/ConfigurationReference"
     description: GuestConfiguration reference instantiated by this deployment.
@@ -55,7 +63,7 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - description
+    - description
     properties:
       description:
         $ref: "common.schema.yml#/$defs/Description"
@@ -71,8 +79,8 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - description
-      - items
+    - description
+    - items
     properties:
       description:
         $ref: "common.schema.yml#/$defs/Description"
@@ -85,8 +93,8 @@ properties:
           type: object
           additionalProperties: false
           required:
-            - description
-            - host_network
+          - description
+          - host_network
           properties:
             description:
               $ref: "common.schema.yml#/$defs/Description"
@@ -118,8 +126,8 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - description
-      - items
+    - description
+    - items
     properties:
       description:
         $ref: "common.schema.yml#/$defs/Description"
@@ -134,47 +142,47 @@ properties:
           $ref: "common.schema.yml#/$defs/Identifier"
         additionalProperties:
           oneOf:
-            - title: Direct mountable-resource binding
-              description: >
-                Direct realization normally used by an EXCLUSIVE guest resource.
-                Cross-configuration validation rejects this form when the
-                GuestConfiguration resource declares sharing: SHARED.
-              type: object
-              additionalProperties: false
-              required:
-                - description
-                - host_storage_target
-              properties:
-                description:
-                  $ref: "common.schema.yml#/$defs/Description"
-                size:
-                  $ref: "common.schema.yml#/$defs/DataSize"
-                  description: Concrete logical size where sizing is meaningful.
-                host_storage_target:
-                  $ref: "common.schema.yml#/$defs/Identifier"
-                  description: Storage target id from the guest's HostConfiguration.
-                backend:
-                  $ref: "common.schema.yml#/$defs/MountableResourceBackendType"
-                  description: Optional compatible backend override.
-                host_mountable_resource_interface:
-                  $ref: "common.schema.yml#/$defs/Identifier"
-                  description: >
-                    Optional named FILESYSTEM provider from the guest's host.
-                    Invalid for BLOCK resources; host defaults apply when omitted.
+          - title: Direct mountable-resource binding
+            description: >
+              Direct realization normally used by an EXCLUSIVE guest resource.
+              Cross-configuration validation rejects this form when the
+              GuestConfiguration resource declares sharing: SHARED.
+            type: object
+            additionalProperties: false
+            required:
+            - description
+            - host_storage_target
+            properties:
+              description:
+                $ref: "common.schema.yml#/$defs/Description"
+              size:
+                $ref: "common.schema.yml#/$defs/DataSize"
+                description: Concrete logical size where sizing is meaningful.
+              host_storage_target:
+                $ref: "common.schema.yml#/$defs/Identifier"
+                description: Storage target id from the guest's HostConfiguration.
+              backend:
+                $ref: "common.schema.yml#/$defs/MountableResourceBackendType"
+                description: Optional compatible backend override.
+              host_mountable_resource_interface:
+                $ref: "common.schema.yml#/$defs/Identifier"
+                description: >
+                  Optional named FILESYSTEM provider from the guest's host.
+                  Invalid for BLOCK resources; host defaults apply when omitted.
 
-            - title: Shared mountable-resource binding
-              description: >
-                Binds a SHARED guest resource to independently managed backing.
-                Cross-configuration validation verifies storage class,
-                representation and accessibility from the guest deployment.
-              type: object
-              additionalProperties: false
-              required:
-                - description
-                - shared_mountable_resource
-              properties:
-                description:
-                  $ref: "common.schema.yml#/$defs/Description"
-                shared_mountable_resource:
-                  $ref: "common.schema.yml#/$defs/ConfigurationReference"
-                  description: Reference to a SharedMountableResourceConfiguration.
+          - title: Shared mountable-resource binding
+            description: >
+              Binds a SHARED guest resource to independently managed backing.
+              Cross-configuration validation verifies storage class,
+              representation and accessibility from the guest deployment.
+            type: object
+            additionalProperties: false
+            required:
+            - description
+            - shared_mountable_resource
+            properties:
+              description:
+                $ref: "common.schema.yml#/$defs/Description"
+              shared_mountable_resource:
+                $ref: "common.schema.yml#/$defs/ConfigurationReference"
+                description: Reference to a SharedMountableResourceConfiguration.

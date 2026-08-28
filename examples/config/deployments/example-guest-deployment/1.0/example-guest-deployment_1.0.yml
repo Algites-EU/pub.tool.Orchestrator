@@ -7,9 +7,15 @@ deployment:
     Main example deployment demonstrating direct storage bindings, placement
     independence, local/off-site archive storage and independent shared resources.
 
-guest: example-guest
-host: example-host
+  config_version: '1.0'
+  config_version_state: RELEASED
+guest:
+  reference: example-guest
+  reference_config_version: '1.0'
+host:
 
+  reference: example-host
+  reference_config_version: '1.0'
 compute:
   description: Concrete compute allocation for the example guest.
   cpu: 4
@@ -74,7 +80,11 @@ mountable_resources:
       host_mountable_resource_interface: nfs-vm
     nix-cache:
       description: Read-only attachment to the independently defined shared Nix cache.
-      shared_mountable_resource: shared-nix-cache
+      shared_mountable_resource:
+        reference: shared-nix-cache
+        reference_config_version: '1.0'
     gradle-cache:
       description: Read-only attachment to the independently defined shared Gradle cache.
-      shared_mountable_resource: shared-gradle-cache
+      shared_mountable_resource:
+        reference: shared-gradle-cache
+        reference_config_version: '1.0'

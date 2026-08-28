@@ -1,0 +1,4 @@
+# One APT package selection per line. The execution layer will install missing
+# packages and upgrade listed installed packages to the configured candidate version.
+ca-certificates
+openssh-server

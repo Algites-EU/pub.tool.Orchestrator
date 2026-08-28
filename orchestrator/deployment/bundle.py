@@ -18,6 +18,7 @@ _BUNDLE_CATEGORY_FOLDERS = {
     "guests": "guest",
     "hosts": "host",
     "shared_mountable_resources": "shared-mountable-resource",
+    "services": "service",
 }
 
 
@@ -36,7 +37,10 @@ class DeploymentBundleBuilder:
         self.schema_validator = schema_validator
         self.logger = logger or logging.getLogger("algites_orchestrator")
 
-    def build(self, deployment_references: Iterable[str], plan_format: str) -> bytes:
+    def build(
+        self, deployment_references: Iterable[tuple[str, str]], plan_format: str,
+        allowed_config_version_states: set[str] | None = None,
+    ) -> bytes:
         references = list(deployment_references)
         if not references:
             raise ConfigurationValidationError("A DeploymentBundle must contain at least one deployment.")
@@ -46,18 +50,28 @@ class DeploymentBundleBuilder:
         manifest_deployments: list[dict[str, Any]] = []
 
         with ZipFile(buffer, "w", compression=ZIP_DEFLATED) as archive:
-            for requested_reference in references:
-                self.repository.clear_access_log()
-                self.logger.info("Resolving deployment '%s' for bundle.", requested_reference)
-                plan = self.resolver.resolve(requested_reference)
+            for requested_reference, requested_version in references:
+                self.logger.info(
+                    "Resolving deployment '%s@%s' for bundle.", requested_reference, requested_version
+                )
+                plan = self.resolver.resolve(
+                    requested_reference, requested_version, allowed_config_version_states
+                )
                 dependency_entries = sorted(
-                    self.repository.accessed_entries(), key=lambda entry: (entry.category, entry.reference)
+                    self.repository.accessed_entries(),
+                    key=lambda entry: (entry.category, entry.reference, entry.config_version),
                 )
 
-                deployment_reference = plan["deployment"]
+                deployment_reference = plan["deployment"]["reference"]
+                deployment_version = plan["deployment"]["reference_config_version"]
                 deployment_id = PurePosixPath(deployment_reference).name
-                deployment_root = PurePosixPath("deployment-bundle") / "deployments" / deployment_reference
-                plan_relative = PurePosixPath("deployments") / deployment_reference / f"{deployment_id}_deployment-plan.{extension}"
+                deployment_root = (
+                    PurePosixPath("deployment-bundle") / "deployments" / deployment_reference / deployment_version
+                )
+                plan_relative = (
+                    PurePosixPath("deployments") / deployment_reference / deployment_version
+                    / f"{deployment_id}_{deployment_version}_deployment-plan.{extension}"
+                )
                 plan_archive_path = PurePosixPath("deployment-bundle") / plan_relative
                 plan_text = serialize_document(plan, plan_format, "deployment-plan")
                 archive.writestr(plan_archive_path.as_posix(), plan_text.encode("utf-8"))
@@ -65,14 +79,17 @@ class DeploymentBundleBuilder:
                 attachment_records: list[dict[str, str]] = []
                 for entry in dependency_entries:
                     bundle_category = _BUNDLE_CATEGORY_FOLDERS.get(entry.category, entry.category.replace("_", "-"))
-                    package_relative = PurePosixPath(bundle_category) / entry.reference
+                    package_relative = PurePosixPath(bundle_category) / entry.reference / entry.config_version
                     package_archive_root = deployment_root / package_relative
                     self._copy_package(archive, entry, package_archive_root)
                     attachment_records.append(
                         {
                             "category": entry.category,
                             "reference": entry.reference,
-                            "path": (PurePosixPath("deployments") / deployment_reference / package_relative).as_posix(),
+                            "reference_config_version": entry.config_version,
+                            "path": (
+                                PurePosixPath("deployments") / deployment_reference / deployment_version / package_relative
+                            ).as_posix(),
                         }
                     )
 
@@ -80,6 +97,7 @@ class DeploymentBundleBuilder:
                     {
                         "id": deployment_id,
                         "reference": deployment_reference,
+                        "reference_config_version": deployment_version,
                         "deployment_plan": plan_relative.as_posix(),
                         "attachments": attachment_records,
                     }

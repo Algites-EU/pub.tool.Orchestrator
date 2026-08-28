@@ -1,11 +1,20 @@
 model_version: 1
-deployment: example-datacenter-guest-deployment
-guest: example-datacenter-guest
-host: example-secondary-host
-environment: example-environment
+deployment:
+  reference: example-datacenter-guest-deployment
+  reference_config_version: '1.0'
+guest:
+  reference: example-datacenter-guest
+  reference_config_version: '1.0'
+host:
+  reference: example-secondary-host
+  reference_config_version: '1.0'
+environment:
+  reference: example-environment
+  reference_config_version: '1.0'
 resolved_os:
   type: NIXOS
-  configuration_path: nixos/
+resolved_host_os:
+  type: DEBIAN
 resolved_compute:
   cpu: 2
   memory: 4GiB
@@ -22,6 +31,11 @@ resolved_management_endpoint:
     transport_protocol: TCP
     port: 22
   address: 10.60.0.50
+resolved_services:
+  guest_consumed: {}
+  guest_provided: {}
+  host_consumed: {}
+  host_provided: {}
 resolved_mountable_resources:
   system-root:
     display_name: System Root

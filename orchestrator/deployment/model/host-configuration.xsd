@@ -6,6 +6,7 @@
       <xs:element name="model_version" type="xs:positiveInteger"/>
       <xs:element name="environment" type="ConfigurationReferenceType"/>
       <xs:element name="host" type="EntityIdentityType"/>
+      <xs:element name="os" type="OperatingSystemConfigurationType"/>
       <xs:element name="management_endpoint" type="NetworkServiceEndpointType"/>
       <xs:element name="storage_devices" type="DynamicMapType"/>
       <xs:element name="storage_controllers" type="DynamicMapType"/>
@@ -13,6 +14,8 @@
       <xs:element name="networks" type="DynamicMapType"/>
       <xs:element name="mountable_resource_interfaces" type="DynamicMapType"/>
       <xs:element name="defaults" type="DynamicMapType"/>
+      <xs:element name="consumed_services" type="DynamicMapType" minOccurs="0"/>
+      <xs:element name="provided_services" type="DynamicMapType" minOccurs="0"/>
     </xs:all></xs:complexType>
   </xs:element>
 </xs:schema>

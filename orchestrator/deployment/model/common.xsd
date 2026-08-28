@@ -15,11 +15,30 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="ConfigurationReferenceType">
+  <xs:simpleType name="ConfigurationReferencePathType">
     <xs:restriction base="xs:string">
       <xs:pattern value="[A-Za-z][A-Za-z0-9._-]*(/[A-Za-z][A-Za-z0-9._-]*)*"/>
     </xs:restriction>
   </xs:simpleType>
+
+  <xs:simpleType name="ConfigVersionType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Za-z0-9][A-Za-z0-9._-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConfigVersionStateType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Za-z][A-Za-z0-9._-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="ConfigurationReferenceType">
+    <xs:all>
+      <xs:element name="reference" type="ConfigurationReferencePathType"/>
+      <xs:element name="reference_config_version" type="ConfigVersionType"/>
+    </xs:all>
+  </xs:complexType>
 
   <xs:simpleType name="NonEmptyStringType">
     <xs:restriction base="xs:string"><xs:minLength value="1"/></xs:restriction>
@@ -46,9 +65,10 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="GuestOsType">
+  <xs:simpleType name="OperatingSystemType">
     <xs:restriction base="xs:string">
       <xs:enumeration value="NIXOS"/>
+      <xs:enumeration value="DEBIAN"/>
       <xs:enumeration value="LINUX"/>
       <xs:enumeration value="WINDOWS"/>
       <xs:enumeration value="MACOS"/>
@@ -95,11 +115,19 @@
     <xs:restriction base="xs:string"><xs:enumeration value="NAT"/><xs:enumeration value="ROUTED"/><xs:enumeration value="BRIDGED"/><xs:enumeration value="ISOLATED"/></xs:restriction>
   </xs:simpleType>
 
+  <xs:complexType name="OperatingSystemConfigurationType">
+    <xs:all>
+      <xs:element name="type" type="OperatingSystemType"/>
+    </xs:all>
+  </xs:complexType>
+
   <xs:complexType name="EntityIdentityType">
     <xs:all>
       <xs:element name="id" type="IdentifierType"/>
       <xs:element name="display_name" type="NonEmptyStringType"/>
       <xs:element name="description" type="NonEmptyStringType"/>
+      <xs:element name="config_version" type="ConfigVersionType"/>
+      <xs:element name="config_version_state" type="ConfigVersionStateType"/>
     </xs:all>
   </xs:complexType>
 

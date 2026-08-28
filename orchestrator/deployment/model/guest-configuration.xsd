@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="1.0">
   <xs:include schemaLocation="common.xsd"/>
-  <xs:complexType name="GuestOsConfigurationType"><xs:all>
-    <xs:element name="description" type="NonEmptyStringType"/>
-    <xs:element name="type" type="GuestOsType"/>
-    <xs:element name="configuration_path" type="NonEmptyStringType" minOccurs="0"/>
-  </xs:all></xs:complexType>
   <xs:element name="guest-configuration">
     <xs:complexType><xs:all>
       <xs:element name="model_version" type="xs:positiveInteger"/>
       <xs:element name="guest" type="EntityIdentityType"/>
-      <xs:element name="os" type="GuestOsConfigurationType"/>
+      <xs:element name="os" type="OperatingSystemConfigurationType"/>
       <xs:element name="compute" type="DynamicMapType"/>
       <xs:element name="network_interfaces" type="DescribedItemsType"/>
       <xs:element name="mountable_resources" type="DynamicMapType"/>
+      <xs:element name="consumed_services" type="DynamicMapType" minOccurs="0"/>
+      <xs:element name="provided_services" type="DynamicMapType" minOccurs="0"/>
     </xs:all></xs:complexType>
   </xs:element>
 </xs:schema>

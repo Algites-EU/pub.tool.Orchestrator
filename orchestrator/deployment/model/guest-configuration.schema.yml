@@ -4,8 +4,8 @@ title: "Algites Orchestrator GuestConfiguration"
 description: >
   Defines what a reusable guest type requires in order to operate. It does not
   contain host paths, host storage targets, IP addresses or normal deployment
-  sizing. For NixOS, packages and services remain authoritative in the referenced
-  Nix configuration instead of being duplicated in YAML.
+  sizing. Operating-system implementation files are package attachments selected by os.type;
+  packages and services remain authoritative in those implementation files rather than YAML.
 
 type: object
 additionalProperties: false
@@ -17,31 +17,34 @@ properties:
   guest:
     type: object
     additionalProperties: false
-    required: [id, display_name, description]
+    required: [id, display_name, description, config_version, config_version_state]
     properties:
-      id: { $ref: "common.schema.yml#/$defs/Identifier" }
-      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      id: {$ref: "common.schema.yml#/$defs/Identifier"}
+      display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+      description: {$ref: "common.schema.yml#/$defs/Description"}
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this configuration entity definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this configuration version.
   os:
     type: object
     additionalProperties: false
-    required: [description, type]
+    required: [type]
     properties:
-      description: { $ref: "common.schema.yml#/$defs/Description" }
-      type: { $ref: "common.schema.yml#/$defs/GuestOsType" }
-      configuration_path:
-        type: string
-        minLength: 1
+      type:
+        $ref: "common.schema.yml#/$defs/OperatingSystemType"
         description: >
-          Path to guest OS configuration owned by this guest definition. For
-          NixOS this points to the Nix/flake tree containing packages, services,
-          users and other authoritative guest software settings.
+          Guest operating system. The corresponding lowercase implementation
+          directory (for example nixos/ or debian/) is a framework convention
+          inside this versioned GuestConfiguration package.
   compute:
     type: object
     additionalProperties: false
     required: [description]
     properties:
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      description: {$ref: "common.schema.yml#/$defs/Description"}
       cpu:
         type: object
         additionalProperties: false
@@ -54,27 +57,27 @@ properties:
             type: integer
             minimum: 1
             description: Default virtual CPU count when deployment does not override it.
-      memory: { $ref: "common.schema.yml#/$defs/DataSizeConstraint" }
+      memory: {$ref: "common.schema.yml#/$defs/DataSizeConstraint"}
   network_interfaces:
     type: object
     additionalProperties: false
     required: [description, items]
     properties:
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      description: {$ref: "common.schema.yml#/$defs/Description"}
       items:
         type: object
         description: >
           Named logical guest adapters. The number of entries is the number of
           distinct logical adapters requested by the guest; each required item
           must be bound to a host network by deployment.
-        propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+        propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
         additionalProperties:
           type: object
           additionalProperties: false
           required: [display_name, description]
           properties:
-            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-            description: { $ref: "common.schema.yml#/$defs/Description" }
+            display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+            description: {$ref: "common.schema.yml#/$defs/Description"}
             required:
               type: boolean
               default: true
@@ -84,17 +87,25 @@ properties:
     additionalProperties: false
     required: [description, items, relations]
     properties:
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      description: {$ref: "common.schema.yml#/$defs/Description"}
       items:
         type: object
         minProperties: 1
         description: Named mountable-resource requirements of the guest.
-        propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
-        additionalProperties: { $ref: "common.schema.yml#/$defs/MountableResource" }
+        propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
+        additionalProperties: {$ref: "common.schema.yml#/$defs/MountableResource"}
       relations:
         type: array
         description: >
           Relations among mountable resources. Version 1 contains placement
           independence predicates; the tree structure intentionally leaves room
           for other relation families in future model versions.
-        items: { $ref: "common.schema.yml#/$defs/MountableResourceRelation" }
+        items: {$ref: "common.schema.yml#/$defs/MountableResourceRelation"}
+  consumed_services:
+    $ref: common.schema.yml#/$defs/ServiceConfigurationReferences
+    description: Named ServiceConfiguration versions consumed by this entity. Concrete provider selection is a separate 
+      deployment-level concern.
+  provided_services:
+    $ref: common.schema.yml#/$defs/ServiceConfigurationReferences
+    description: Named ServiceConfiguration versions provided by this entity. The ServiceConfiguration package supplies 
+      common/provider/consumer definition branches.

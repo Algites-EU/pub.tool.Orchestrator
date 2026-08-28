@@ -16,38 +16,44 @@ properties:
   environment:
     type: object
     additionalProperties: false
-    required: [id, display_name, description]
+    required: [id, display_name, description, config_version, config_version_state]
     properties:
-      id: { $ref: "common.schema.yml#/$defs/Identifier" }
-      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      id: {$ref: "common.schema.yml#/$defs/Identifier"}
+      display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+      description: {$ref: "common.schema.yml#/$defs/Description"}
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this configuration entity definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this configuration version.
   sites:
     type: object
     description: >
       Registry of physical locations used by NO_SHARED_SITE. A site may be a
       home, office, server room, datacenter or another physical failure boundary.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
   hosts:
     type: object
     description: >
       Registry of physical hosts/appliances relevant to storage independence.
       Some have a HostConfiguration and run guests; others may be NAS/SAN
       appliances used only to describe backing-storage dependencies.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description, site]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
         site:
           $ref: "common.schema.yml#/$defs/Identifier"
           description: Site identifier containing this physical host/appliance.
@@ -56,14 +62,14 @@ properties:
     description: >
       Registry of external or explicitly modeled storage systems. Local storage
       of a deployment host normally uses HOST_LOCAL_STORAGE and needs no entry.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
         impacted_hosts:
           type: array
           minItems: 1
@@ -71,14 +77,14 @@ properties:
           description: >
             Physical host/appliance ids whose failure can make this storage
             system unavailable. Their sites automatically affect the system.
-          items: { $ref: "common.schema.yml#/$defs/Identifier" }
+          items: {$ref: "common.schema.yml#/$defs/Identifier"}
         impacted_sites:
           type: array
           minItems: 1
           uniqueItems: true
           description: >
             Additional site dependencies not fully derived from impacted_hosts.
-          items: { $ref: "common.schema.yml#/$defs/Identifier" }
+          items: {$ref: "common.schema.yml#/$defs/Identifier"}
       anyOf:
-        - required: [impacted_hosts]
-        - required: [impacted_sites]
+      - required: [impacted_hosts]
+      - required: [impacted_sites]

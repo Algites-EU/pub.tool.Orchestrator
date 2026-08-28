@@ -27,8 +27,15 @@ class DeploymentConfigurationValidator:
             environment_entry, environment = self.repository.resolve("environments", host["environment"])
             self.resolver._validate_environment(environment)
             self.resolver._validate_host(entry, host, environment_entry, environment)
+            for service_ref in list(host.get("consumed_services", {}).values()) + list(host.get("provided_services", {}).values()):
+                self.repository.resolve("services", service_ref)
         for entry in self.repository.all_entries("guests"):
-            self.resolver._validate_guest(self.repository.load_entry(entry), entry)
+            guest = self.repository.load_entry(entry)
+            self.resolver._validate_guest(guest, entry)
+            for service_ref in list(guest.get("consumed_services", {}).values()) + list(guest.get("provided_services", {}).values()):
+                self.repository.resolve("services", service_ref)
+        for entry in self.repository.all_entries("services"):
+            self.repository.load_entry(entry)
         for entry in self.repository.all_entries("shared_mountable_resources"):
             shared = self.repository.load_entry(entry)
             host_entry, host = self.repository.resolve("hosts", shared["host"])
@@ -46,22 +53,32 @@ class DeploymentConfigurationValidator:
                         f"Shared resource '{entry.reference}' references unknown filesystem provider '{provider}'."
                     )
         for entry in self.repository.all_entries("deployments"):
-            self.resolver.resolve(entry.reference)
+            self.resolver.resolve(entry.reference, entry.config_version)
 
         return {
             "valid": True,
             "scope": "all",
             "validated_files": [
-                f"{entry.category}:{entry.reference}" for entry in sorted(entries, key=lambda item: (item.category, item.reference))
+                f"{entry.category}:{entry.reference}@{entry.config_version}"
+                for entry in sorted(entries, key=lambda item: (item.category, item.reference, item.config_version))
             ],
         }
 
-    def validate_deployment(self, deployment_reference: str) -> dict[str, Any]:
-        plan = self.resolver.resolve(deployment_reference)
-        entries = sorted(self.repository.loaded_entries.values(), key=lambda item: (item.category, item.reference))
+    def validate_deployment(
+        self, deployment_reference: str, deployment_config_version: str,
+        allowed_config_version_states: set[str] | None = None,
+    ) -> dict[str, Any]:
+        plan = self.resolver.resolve(
+            deployment_reference, deployment_config_version, allowed_config_version_states
+        )
+        entries = sorted(
+            self.repository.accessed_entries(), key=lambda item: (item.category, item.reference, item.config_version)
+        )
         return {
             "valid": True,
             "scope": "deployment",
             "deployment": plan["deployment"],
-            "validated_files": [f"{entry.category}:{entry.reference}" for entry in entries],
+            "validated_files": [
+                f"{entry.category}:{entry.reference}@{entry.config_version}" for entry in entries
+            ],
         }

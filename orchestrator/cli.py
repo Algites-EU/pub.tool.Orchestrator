@@ -29,6 +29,11 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--config-folder-shared-mountable-resources-name", "-cfsmrn", default="shared-mountable-resources"
     )
+    parser.add_argument("--config-folder-services-name", "-cfsn", default="services")
+    parser.add_argument(
+        "--allow-config-version-state", "-acvs", action="append", default=[],
+        help="Allow one config_version_state in the resolved closure. Repeat to form a whitelist; if omitted, states are not restricted."
+    )
     parser.add_argument("--output-folder", "-of", help="Base folder for relative output file paths.")
     parser.add_argument("--output-file-name", "-ofn", help="Result file path. If omitted, result is written to stdout.")
     parser.add_argument(
@@ -52,7 +57,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     cdp = subparsers.add_parser("create-deployment-plan", aliases=["cdp"], help="Resolve one deployment into DeploymentPlan.")
     _add_common_options(cdp)
-    cdp.add_argument("--deployment", "-d", required=True, help="Deployment configuration reference.")
+    cdp.add_argument("--deployment", "-d", required=True, help="Deployment configuration reference as <reference>@<config_version>.")
 
     cdb = subparsers.add_parser(
         "create-deployment-bundle", aliases=["cdb"],
@@ -61,12 +66,12 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_common_options(cdb)
     cdb.add_argument(
         "--deployment", "-d", required=True, action="append",
-        help="Deployment configuration reference. Repeat the option to include multiple deployments."
+        help="Deployment configuration reference as <reference>@<config_version>. Repeat the option to include multiple deployments."
     )
 
     vc = subparsers.add_parser("validate-configuration", aliases=["vc"], help="Validate configuration root or one deployment closure.")
     _add_common_options(vc)
-    vc.add_argument("--deployment", "-d", help="Optional deployment reference limiting validation to its closure.")
+    vc.add_argument("--deployment", "-d", help="Optional deployment reference as <reference>@<config_version>, limiting validation to its closure.")
     return parser
 
 
@@ -80,7 +85,21 @@ def _categories(args) -> list[ConfigurationCategory]:
             "shared_mountable_resources", args.config_folder_shared_mountable_resources_name,
             "shared-mountable-resource-configuration.schema.yml", ("shared_mountable_resource", "id")
         ),
+        ConfigurationCategory("services", args.config_folder_services_name, "service-configuration.schema.yml", ("service", "id")),
     ]
+
+
+def _parse_cli_configuration_reference(value: str) -> tuple[str, str]:
+    if "@" not in value:
+        raise CliArgumentError(
+            f"Configuration reference '{value}' must include an exact config version as <reference>@<config_version>."
+        )
+    reference, config_version = value.rsplit("@", 1)
+    if not reference or not config_version:
+        raise CliArgumentError(
+            f"Configuration reference '{value}' must use <reference>@<config_version>."
+        )
+    return reference, config_version
 
 
 def _effective_log_level(args) -> str:
@@ -111,24 +130,36 @@ def main(argv: list[str] | None = None) -> int:
         resolver = DeploymentResolver(repository, schema_validator, logger)
 
         if args.command in ("create-deployment-plan", "cdp"):
-            logger.info("Resolving deployment '%s'.", args.deployment)
-            result = resolver.resolve(args.deployment)
-            logger.info("Deployment plan resolved successfully for '%s'.", result["deployment"])
+            deployment_reference, deployment_version = _parse_cli_configuration_reference(args.deployment)
+            logger.info("Resolving deployment '%s@%s'.", deployment_reference, deployment_version)
+            result = resolver.resolve(
+                deployment_reference, deployment_version, set(args.allow_config_version_state) or None
+            )
+            logger.info(
+                "Deployment plan resolved successfully for '%s@%s'.",
+                result["deployment"]["reference"], result["deployment"]["reference_config_version"]
+            )
             write_result(result, args.output_format, output_path, "deployment-plan")
 
         elif args.command in ("create-deployment-bundle", "cdb"):
             if len(set(args.deployment)) != len(args.deployment):
                 raise CliArgumentError("The same --deployment reference may not be specified more than once in one bundle.")
+            deployment_references = [_parse_cli_configuration_reference(value) for value in args.deployment]
             builder = DeploymentBundleBuilder(repository, resolver, schema_validator, logger)
-            bundle = builder.build(args.deployment, args.output_format)
+            bundle = builder.build(
+                deployment_references, args.output_format, set(args.allow_config_version_state) or None
+            )
             logger.info("Deployment bundle created successfully with %d deployment(s).", len(args.deployment))
             write_binary_result(bundle, output_path)
 
         else:
             validator = DeploymentConfigurationValidator(repository, resolver)
             if args.deployment:
-                logger.info("Validating configuration closure for deployment '%s'.", args.deployment)
-                result = validator.validate_deployment(args.deployment)
+                deployment_reference, deployment_version = _parse_cli_configuration_reference(args.deployment)
+                logger.info("Validating configuration closure for deployment '%s@%s'.", deployment_reference, deployment_version)
+                result = validator.validate_deployment(
+                    deployment_reference, deployment_version, set(args.allow_config_version_state) or None
+                )
             else:
                 logger.info("Validating complete configuration root '%s'.", repository.config_root)
                 result = validator.validate_all()

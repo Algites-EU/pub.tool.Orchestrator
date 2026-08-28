@@ -8,9 +8,13 @@ shared_mountable_resource:
     deliberately uses the disposable storage class even though multiple guests
     may consume it concurrently.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 storage_class: DISPOSABLE
 representation: FILESYSTEM
-host: example-host
+host:
+  reference: example-host
+  reference_config_version: '1.0'
 host_storage_target: disposable-nvme
 backend: DIRECTORY
 host_mountable_resource_interface: nfs-vm

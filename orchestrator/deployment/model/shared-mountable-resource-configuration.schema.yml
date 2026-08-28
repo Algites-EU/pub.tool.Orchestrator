@@ -12,12 +12,12 @@ description: >
 type: object
 additionalProperties: false
 required:
-  - model_version
-  - shared_mountable_resource
-  - storage_class
-  - representation
-  - host
-  - host_storage_target
+- model_version
+- shared_mountable_resource
+- storage_class
+- representation
+- host
+- host_storage_target
 properties:
 
   model_version:
@@ -30,9 +30,11 @@ properties:
     type: object
     additionalProperties: false
     required:
-      - id
-      - display_name
-      - description
+    - id
+    - display_name
+    - description
+    - config_version
+    - config_version_state
     properties:
       id:
         $ref: "common.schema.yml#/$defs/Identifier"
@@ -44,6 +46,12 @@ properties:
       description:
         $ref: "common.schema.yml#/$defs/Description"
 
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this configuration entity definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this configuration version.
   storage_class:
     $ref: "common.schema.yml#/$defs/MountableResourceStorageClass"
     description: >
@@ -90,33 +98,33 @@ properties:
       default provider for consumers. This property is invalid for BLOCK.
 
 allOf:
-  - if:
-      properties:
-        representation:
-          const: BLOCK
+- if:
+    properties:
+      representation:
+        const: BLOCK
+    required:
+    - representation
+  then:
+    not:
       required:
-        - representation
-    then:
-      not:
-        required:
-          - host_mountable_resource_interface
-      properties:
-        backend:
-          oneOf:
-            - const: QCOW2
-              description: QEMU Copy-On-Write image backing for a shared block resource.
-            - const: RAW_FILE
-              description: Raw image-file backing for a shared block resource.
-            - const: LVM
-              description: LVM logical-volume backing for a shared block resource.
-  - if:
-      properties:
-        representation:
-          const: FILESYSTEM
-      required:
-        - representation
-    then:
-      properties:
-        backend:
-          const: DIRECTORY
-          description: Host directory backing for a shared filesystem resource.
+      - host_mountable_resource_interface
+    properties:
+      backend:
+        oneOf:
+        - const: QCOW2
+          description: QEMU Copy-On-Write image backing for a shared block resource.
+        - const: RAW_FILE
+          description: Raw image-file backing for a shared block resource.
+        - const: LVM
+          description: LVM logical-volume backing for a shared block resource.
+- if:
+    properties:
+      representation:
+        const: FILESYSTEM
+    required:
+    - representation
+  then:
+    properties:
+      backend:
+        const: DIRECTORY
+        description: Host directory backing for a shared filesystem resource.

@@ -24,6 +24,7 @@ from orchestrator.deployment.validation import DeploymentConfigurationValidator,
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples" / "config"
 MODEL = ROOT / "orchestrator" / "deployment" / "model"
+VERSION = "1.0"
 
 
 def categories() -> list[ConfigurationCategory]:
@@ -36,6 +37,7 @@ def categories() -> list[ConfigurationCategory]:
             "shared_mountable_resources", "shared-mountable-resources",
             "shared-mountable-resource-configuration.schema.yml", ("shared_mountable_resource", "id")
         ),
+        ConfigurationCategory("services", "services", "service-configuration.schema.yml", ("service", "id")),
     ]
 
 
@@ -53,7 +55,7 @@ class OrchestratorTests(unittest.TestCase):
         resolver = DeploymentResolver(repo, self.schema)
         report = DeploymentConfigurationValidator(repo, resolver).validate_all()
         self.assertTrue(report["valid"])
-        self.assertEqual(11, len(report["validated_files"]))
+        self.assertEqual(12, len(report["validated_files"]))
 
     def test_all_example_deployments_generate_schema_valid_plans(self):
         for deployment in (
@@ -63,8 +65,8 @@ class OrchestratorTests(unittest.TestCase):
         ):
             with self.subTest(deployment=deployment):
                 repo = self.repository()
-                plan = DeploymentResolver(repo, self.schema).resolve(deployment)
-                self.assertEqual(deployment, plan["deployment"])
+                plan = DeploymentResolver(repo, self.schema).resolve(deployment, VERSION)
+                self.assertEqual({"reference": deployment, "reference_config_version": VERSION}, plan["deployment"])
                 self.assertIn("resolved_mountable_resources", plan)
 
     def test_checked_in_example_plans_match_generator_output(self):
@@ -75,14 +77,14 @@ class OrchestratorTests(unittest.TestCase):
         ):
             with self.subTest(deployment=deployment):
                 repo = self.repository()
-                generated = DeploymentResolver(repo, self.schema).resolve(deployment)
+                generated = DeploymentResolver(repo, self.schema).resolve(deployment, VERSION)
                 expected_path = ROOT / "examples" / "plans" / f"{deployment}.plan.yml"
                 expected = yaml.safe_load(expected_path.read_text(encoding="utf-8"))
                 self.assertEqual(expected, generated)
 
     def test_main_example_resolves_expected_backend_paths_and_relations(self):
         repo = self.repository()
-        plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+        plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
         resources = plan["resolved_mountable_resources"]
         self.assertEqual(
             "/srv/libvirt/DISPOSABLE/qemu/images/example-guest-deployment/system-root.qcow2",
@@ -103,13 +105,15 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             for site in ("site01", "site02"):
-                package = root / "hosts" / site / "hostA"
+                package = root / "hosts" / site / "hostA" / VERSION
                 package.mkdir(parents=True)
-                (package / "hostA.yml").write_text("host:\n  id: hostA\n", encoding="utf-8")
+                (package / f"hostA_{VERSION}.yml").write_text(
+                    f"host:\n  id: hostA\n  config_version: '{VERSION}'\n", encoding="utf-8"
+                )
             repo = self.repository(root)
-            self.assertEqual("site01/hostA", repo.resolve_entry("hosts", "site01/hostA").reference)
+            self.assertEqual("site01/hostA", repo.resolve_entry("hosts", "site01/hostA", VERSION).reference)
             with self.assertRaises(AmbiguousReferenceError) as cm:
-                repo.resolve_entry("hosts", "hostA")
+                repo.resolve_entry("hosts", "hostA", VERSION)
             self.assertIn("site01/hostA", str(cm.exception))
             self.assertIn("site02/hostA", str(cm.exception))
 
@@ -117,12 +121,12 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             shutil.copytree(EXAMPLES, root / "config")
-            path = root / "config" / "guests" / "example-guest" / "example-guest.yml"
+            path = root / "config" / "guests" / "example-guest" / VERSION / f"example-guest_{VERSION}.yml"
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
             doc["guest"]["id"] = "different-id"
             path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
             repo = self.repository(root / "config")
-            entry = repo.resolve_entry("guests", "example-guest")
+            entry = repo.resolve_entry("guests", "example-guest", VERSION)
             with self.assertRaises(ConfigurationValidationError):
                 repo.load_entry(entry)
 
@@ -132,23 +136,23 @@ class OrchestratorTests(unittest.TestCase):
             shutil.copytree(EXAMPLES, config)
             (config / "hosts" / "site01").mkdir()
             shutil.move(config / "hosts" / "example-host", config / "hosts" / "site01" / "example-host")
-            deployment_path = config / "deployments" / "example-guest-deployment" / "example-guest-deployment.yml"
+            deployment_path = config / "deployments" / "example-guest-deployment" / VERSION / f"example-guest-deployment_{VERSION}.yml"
             deployment = yaml.safe_load(deployment_path.read_text(encoding="utf-8"))
-            deployment["host"] = "site01/example-host"
+            deployment["host"] = {"reference": "site01/example-host", "reference_config_version": VERSION}
             deployment_path.write_text(yaml.safe_dump(deployment, sort_keys=False), encoding="utf-8")
             for shared_name in ("shared-gradle-cache", "shared-nix-cache"):
-                path = config / "shared-mountable-resources" / shared_name / f"{shared_name}.yml"
+                path = config / "shared-mountable-resources" / shared_name / VERSION / f"{shared_name}_{VERSION}.yml"
                 shared = yaml.safe_load(path.read_text(encoding="utf-8"))
-                shared["host"] = "site01/example-host"
+                shared["host"] = {"reference": "site01/example-host", "reference_config_version": VERSION}
                 path.write_text(yaml.safe_dump(shared, sort_keys=False), encoding="utf-8")
-            cache_dep_path = config / "deployments" / "example-cache-provider-deployment" / "example-cache-provider-deployment.yml"
+            cache_dep_path = config / "deployments" / "example-cache-provider-deployment" / VERSION / f"example-cache-provider-deployment_{VERSION}.yml"
             cache_dep = yaml.safe_load(cache_dep_path.read_text(encoding="utf-8"))
-            cache_dep["host"] = "site01/example-host"
+            cache_dep["host"] = {"reference": "site01/example-host", "reference_config_version": VERSION}
             cache_dep_path.write_text(yaml.safe_dump(cache_dep, sort_keys=False), encoding="utf-8")
 
             repo = self.repository(config)
-            plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
-            self.assertEqual("site01/example-host", plan["host"])
+            plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
+            self.assertEqual({"reference": "site01/example-host", "reference_config_version": VERSION}, plan["host"])
             self.assertEqual(
                 "HOST_LOCAL_STORAGE@site01/example-host",
                 plan["resolved_mountable_resources"]["application-data"]["storage_system"],
@@ -172,10 +176,10 @@ class OrchestratorTests(unittest.TestCase):
         )
 
     def test_cli_keeps_result_on_stdout_and_diagnostics_on_stderr(self):
-        proc = self.run_cli("cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment")
+        proc = self.run_cli("cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0")
         self.assertEqual(0, proc.returncode, proc.stderr)
         plan = yaml.safe_load(proc.stdout)
-        self.assertEqual("example-guest-deployment", plan["deployment"])
+        self.assertEqual({"reference": "example-guest-deployment", "reference_config_version": VERSION}, plan["deployment"])
         self.assertNotIn("INFO", proc.stdout)
         self.assertIn("INFO Resolving deployment", proc.stderr)
 
@@ -183,7 +187,7 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             output = Path(td)
             proc = self.run_cli(
-                "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment",
+                "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0",
                 f"-of={output}", "-ofn=plans/plan.yml", "-pifn=logs/processing.log"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
@@ -199,7 +203,7 @@ class OrchestratorTests(unittest.TestCase):
             actual = root / "absolute" / "plan.json"
             ignored = root / "ignored"
             proc = self.run_cli(
-                "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment",
+                "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0",
                 f"-of={ignored}", f"-ofn={actual}", "-ofmt=json", "-q"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
@@ -214,7 +218,7 @@ class OrchestratorTests(unittest.TestCase):
             duplicate_package = config / "guests" / "other" / "example-guest"
             duplicate_package.parent.mkdir()
             shutil.copytree(config / "guests" / "example-guest", duplicate_package)
-            proc = self.run_cli("cdp", f"-cr={config}", "-d=example-guest-deployment", "-q")
+            proc = self.run_cli("cdp", f"-cr={config}", "-d=example-guest-deployment@1.0", "-q")
             self.assertEqual(5, proc.returncode)
             self.assertIn("Ambiguous guests configuration reference", proc.stderr)
             self.assertIn("other/example-guest", proc.stderr)
@@ -223,12 +227,12 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            host_path = config / "hosts" / "example-host" / "example-host.yml"
+            host_path = config / "hosts" / "example-host" / VERSION / f"example-host_{VERSION}.yml"
             host = yaml.safe_load(host_path.read_text(encoding="utf-8"))
             host["storage_targets"]["persistent-sata"]["impacted_devices"].append("nvme-a")
             host_path.write_text(yaml.safe_dump(host, sort_keys=False), encoding="utf-8")
             repo = self.repository(config)
-            plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+            plan = DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
             self.assertEqual(1, len(plan["warnings"]))
             preferred = plan["relation_results"][0]
             self.assertFalse(preferred["satisfied"] )
@@ -238,20 +242,20 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            host_path = config / "hosts" / "example-host" / "example-host.yml"
+            host_path = config / "hosts" / "example-host" / VERSION / f"example-host_{VERSION}.yml"
             host = yaml.safe_load(host_path.read_text(encoding="utf-8"))
             host["storage_targets"]["archive-local-nas"]["storage_system"] = "HOST_LOCAL_STORAGE"
             host_path.write_text(yaml.safe_dump(host, sort_keys=False), encoding="utf-8")
             repo = self.repository(config)
             with self.assertRaises(ResolutionError):
-                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
 
     def test_reference_path_traversal_is_rejected(self):
         repo = self.repository()
         with self.assertRaises(UnresolvedReferenceError):
-            repo.resolve_entry("hosts", "../example-host")
+            repo.resolve_entry("hosts", "../example-host", VERSION)
         with self.assertRaises(UnresolvedReferenceError):
-            repo.resolve_entry("hosts", "/example-host")
+            repo.resolve_entry("hosts", "/example-host", VERSION)
 
     def test_yaml_extension_is_rejected_by_full_validation(self):
         with tempfile.TemporaryDirectory() as td:
@@ -270,25 +274,25 @@ class OrchestratorTests(unittest.TestCase):
             unrelated = config / "guests" / "unrelated.yml"
             unrelated.write_text("this: [is: invalid", encoding="utf-8")
             proc = self.run_cli(
-                "vc", f"-cr={config}", "-d=example-datacenter-guest-deployment", "-q"
+                "vc", f"-cr={config}", "-d=example-datacenter-guest-deployment@1.0", "-q"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
             report = yaml.safe_load(proc.stdout)
             self.assertEqual("deployment", report["scope"])
 
 
-    def test_plan_contains_environment_and_resolved_guest_os(self):
-        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment")
-        self.assertEqual("example-environment", plan["environment"])
-        self.assertEqual("NIXOS", plan["resolved_os"]["type"])
-        self.assertEqual("nixos/", plan["resolved_os"]["configuration_path"])
+    def test_plan_contains_environment_and_resolved_operating_systems(self):
+        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment", VERSION)
+        self.assertEqual({"reference": "example-environment", "reference_config_version": VERSION}, plan["environment"])
+        self.assertEqual({"type": "NIXOS"}, plan["resolved_os"])
+        self.assertEqual({"type": "DEBIAN"}, plan["resolved_host_os"])
 
     def test_configuration_entity_package_layout_is_required(self):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
             package = config / "guests" / "example-guest"
-            definition = package / "example-guest.yml"
+            definition = package / VERSION / f"example-guest_{VERSION}.yml"
             flat = config / "guests" / "example-guest.yml"
             definition.rename(flat)
             shutil.rmtree(package)
@@ -297,18 +301,18 @@ class OrchestratorTests(unittest.TestCase):
             with self.assertRaises(ConfigurationValidationError):
                 DeploymentConfigurationValidator(repo, resolver).validate_all()
 
-    def test_guest_configuration_path_must_exist_inside_entity_package(self):
+    def test_guest_os_implementation_directory_must_exist_inside_entity_package(self):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            shutil.rmtree(config / "guests" / "example-guest" / "nixos")
+            shutil.rmtree(config / "guests" / "example-guest" / VERSION / "nixos")
             repo = self.repository(config)
             with self.assertRaises(ConfigurationValidationError):
-                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment")
+                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
 
 
     def test_management_endpoint_is_resolved_from_guest_interface_binding(self):
-        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment")
+        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment", VERSION)
         endpoint = plan["resolved_management_endpoint"]
         self.assertEqual("172.27.130.50", endpoint["address"])
         self.assertEqual(
@@ -320,14 +324,120 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             config = Path(td) / "config"
             shutil.copytree(EXAMPLES, config)
-            path = config / "deployments" / "example-datacenter-guest-deployment" / "example-datacenter-guest-deployment.yml"
+            path = config / "deployments" / "example-datacenter-guest-deployment" / VERSION / f"example-datacenter-guest-deployment_{VERSION}.yml"
             doc = yaml.safe_load(path.read_text(encoding="utf-8"))
             doc["management_endpoint_interface_binding"].pop("address_family")
             path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
             repo = self.repository(config)
             with self.assertRaises(ConfigurationValidationError) as cm:
-                DeploymentResolver(repo, self.schema).resolve("example-datacenter-guest-deployment")
+                DeploymentResolver(repo, self.schema).resolve("example-datacenter-guest-deployment", VERSION)
             self.assertIn("dual-stack", str(cm.exception))
+
+
+    def test_parallel_configuration_versions_resolve_exactly(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            entity = config / "guests" / "example-guest"
+            source = entity / VERSION
+            target_version = "2.0"
+            target = entity / target_version
+            shutil.copytree(source, target)
+            old_file = target / f"example-guest_{VERSION}.yml"
+            new_file = target / f"example-guest_{target_version}.yml"
+            old_file.rename(new_file)
+            doc = yaml.safe_load(new_file.read_text(encoding="utf-8"))
+            doc["guest"]["config_version"] = target_version
+            new_file.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
+            repo = self.repository(config)
+            self.assertEqual(VERSION, repo.resolve_entry("guests", "example-guest", VERSION).config_version)
+            self.assertEqual(target_version, repo.resolve_entry("guests", "example-guest", target_version).config_version)
+
+    def test_allowed_config_version_state_checks_entire_resolved_closure(self):
+        proc = self.run_cli(
+            "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0",
+            "--allow-config-version-state=RELEASED", "-q"
+        )
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            service_path = config / "services" / "example-artifact-cache" / VERSION / f"example-artifact-cache_{VERSION}.yml"
+            doc = yaml.safe_load(service_path.read_text(encoding="utf-8"))
+            doc["service"]["config_version_state"] = "DEVELOPMENT"
+            service_path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
+            proc = self.run_cli(
+                "cdp", f"-cr={config}", "-d=example-guest-deployment@1.0",
+                "--allow-config-version-state=RELEASED", "-q"
+            )
+            self.assertEqual(3, proc.returncode)
+            self.assertIn("services:example-artifact-cache@1.0", proc.stderr)
+            self.assertIn("DEVELOPMENT", proc.stderr)
+
+    def test_service_package_requires_common_consumer_provider_directories(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            shutil.rmtree(config / "services" / "example-artifact-cache" / VERSION / "provider")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError) as cm:
+                repo.resolve("services", {"reference": "example-artifact-cache", "reference_config_version": VERSION})
+            self.assertIn("common/, consumer/ and provider/", str(cm.exception))
+
+    def test_host_debian_implementation_directory_must_exist_inside_entity_package(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            shutil.rmtree(config / "hosts" / "example-host" / VERSION / "debian")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError) as cm:
+                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
+            self.assertIn("declares operating system DEBIAN", str(cm.exception))
+            self.assertIn("debian/", str(cm.exception))
+
+    def test_service_implementation_is_selected_by_target_operating_system(self):
+        plan = DeploymentResolver(self.repository(), self.schema).resolve("example-guest-deployment", VERSION)
+        guest_service = plan["resolved_services"]["guest_consumed"]["artifact-cache"]
+        self.assertEqual("NIXOS", guest_service["implementation"]["os_type"])
+        self.assertEqual("common/nixos/", guest_service["implementation"]["common_path"])
+        self.assertEqual("consumer/nixos/", guest_service["implementation"]["role_path"])
+        host_service = plan["resolved_services"]["host_consumed"]["artifact-cache"]
+        self.assertEqual("DEBIAN", host_service["implementation"]["os_type"])
+        self.assertEqual("common/debian/", host_service["implementation"]["common_path"])
+        self.assertEqual("consumer/debian/", host_service["implementation"]["role_path"])
+
+    def test_service_role_requires_matching_operating_system_implementation(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            shutil.rmtree(config / "services" / "example-artifact-cache" / VERSION / "consumer" / "debian")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError) as cm:
+                DeploymentResolver(repo, self.schema).resolve("example-guest-deployment", VERSION)
+            self.assertIn("consumer implementation for operating system DEBIAN", str(cm.exception))
+            self.assertIn("consumer/debian/", str(cm.exception))
+
+    def test_service_branch_rejects_definition_files_outside_os_subdirectory(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            bad = config / "services" / "example-artifact-cache" / VERSION / "consumer" / "default.nix"
+            bad.write_text("{ ... }: {}\n", encoding="utf-8")
+            repo = self.repository(config)
+            with self.assertRaises(ConfigurationValidationError) as cm:
+                repo.resolve("services", {"reference": "example-artifact-cache", "reference_config_version": VERSION})
+            self.assertIn("operating-system subdirectory", str(cm.exception))
+
+    def test_cross_entity_reference_requires_reference_config_version(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            path = config / "deployments" / "example-guest-deployment" / VERSION / f"example-guest-deployment_{VERSION}.yml"
+            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+            doc["guest"].pop("reference_config_version")
+            path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
+            with self.assertRaises(ConfigurationValidationError):
+                DeploymentResolver(self.repository(config), self.schema).resolve("example-guest-deployment", VERSION)
 
     def test_all_configuration_xml_equivalents_match_xsd_1_0(self):
         mappings = {
@@ -339,6 +449,7 @@ class OrchestratorTests(unittest.TestCase):
                 "shared-mountable-resource-configuration",
                 "shared-mountable-resource-configuration.xsd",
             ),
+            "services": ("service-configuration", "service-configuration.xsd"),
         }
         for category, (root_name, schema_name) in mappings.items():
             schema = etree.XMLSchema(etree.parse(str(MODEL / schema_name)))
@@ -350,17 +461,17 @@ class OrchestratorTests(unittest.TestCase):
 
     def test_cdp_supports_xml_and_xml_matches_xsd(self):
         proc = self.run_cli(
-            "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-ofmt=xml", "-q"
+            "cdp", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0", "-ofmt=xml", "-q"
         )
         self.assertEqual(0, proc.returncode, proc.stderr)
         document = etree.fromstring(proc.stdout.encode("utf-8"))
         self.assertEqual("deployment-plan", document.tag)
-        self.assertEqual("example-guest-deployment", document.findtext("deployment"))
+        self.assertEqual("example-guest-deployment", document.findtext("deployment/reference"))
         schema = etree.XMLSchema(etree.parse(str(MODEL / "deployment-plan.xsd")))
         self.assertTrue(schema.validate(document), schema.error_log)
 
     def test_validation_report_supports_xml_and_matches_xsd(self):
-        proc = self.run_cli("vc", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-ofmt=xml", "-q")
+        proc = self.run_cli("vc", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0", "-ofmt=xml", "-q")
         self.assertEqual(0, proc.returncode, proc.stderr)
         document = etree.fromstring(proc.stdout.encode("utf-8"))
         schema = etree.XMLSchema(etree.parse(str(MODEL / "validation-report.xsd")))
@@ -368,30 +479,46 @@ class OrchestratorTests(unittest.TestCase):
 
     def test_cdb_stdout_is_zip_with_self_contained_yaml_deployment(self):
         proc = self.run_cli_binary(
-            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-q"
+            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0", "-q"
         )
         self.assertEqual(0, proc.returncode, proc.stderr.decode("utf-8"))
         with ZipFile(io.BytesIO(proc.stdout)) as archive:
             names = set(archive.namelist())
             self.assertIn("deployment-bundle/manifest.yml", names)
             self.assertIn(
-                "deployment-bundle/deployments/example-guest-deployment/example-guest-deployment_deployment-plan.yml",
+                "deployment-bundle/deployments/example-guest-deployment/1.0/example-guest-deployment_1.0_deployment-plan.yml",
                 names,
             )
             self.assertIn(
-                "deployment-bundle/deployments/example-guest-deployment/guest/example-guest/example-guest.yml",
+                "deployment-bundle/deployments/example-guest-deployment/1.0/guest/example-guest/1.0/example-guest_1.0.yml",
                 names,
             )
             self.assertIn(
-                "deployment-bundle/deployments/example-guest-deployment/guest/example-guest/nixos/default.nix",
+                "deployment-bundle/deployments/example-guest-deployment/1.0/guest/example-guest/1.0/nixos/default.nix",
                 names,
             )
             self.assertIn(
-                "deployment-bundle/deployments/example-guest-deployment/host/example-host/example-host.yml",
+                "deployment-bundle/deployments/example-guest-deployment/1.0/host/example-host/1.0/example-host_1.0.yml",
                 names,
             )
             self.assertIn(
-                "deployment-bundle/deployments/example-guest-deployment/guest-deployment/example-guest-deployment/example-guest-deployment.yml",
+                "deployment-bundle/deployments/example-guest-deployment/1.0/host/example-host/1.0/debian/apt/packages.list",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/1.0/guest-deployment/example-guest-deployment/1.0/example-guest-deployment_1.0.yml",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/1.0/service/example-artifact-cache/1.0/example-artifact-cache_1.0.yml",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/1.0/service/example-artifact-cache/1.0/consumer/nixos/default.nix",
+                names,
+            )
+            self.assertIn(
+                "deployment-bundle/deployments/example-guest-deployment/1.0/service/example-artifact-cache/1.0/consumer/debian/apt/packages.list",
                 names,
             )
             manifest = yaml.safe_load(archive.read("deployment-bundle/manifest.yml"))
@@ -403,28 +530,81 @@ class OrchestratorTests(unittest.TestCase):
             bundle_path = Path(td) / "multi.zip"
             proc = self.run_cli(
                 "cdb", f"-cr={EXAMPLES}",
-                "-d=example-guest-deployment", "-d=example-cache-provider-deployment",
+                "-d=example-guest-deployment@1.0", "-d=example-cache-provider-deployment@1.0",
                 f"-ofn={bundle_path}", "-q"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
             with ZipFile(bundle_path) as archive:
                 names = set(archive.namelist())
                 self.assertIn(
-                    "deployment-bundle/deployments/example-guest-deployment/host/example-host/example-host.yml",
+                    "deployment-bundle/deployments/example-guest-deployment/1.0/host/example-host/1.0/example-host_1.0.yml",
                     names,
                 )
                 self.assertIn(
-                    "deployment-bundle/deployments/example-cache-provider-deployment/host/example-host/example-host.yml",
+                    "deployment-bundle/deployments/example-cache-provider-deployment/1.0/host/example-host/1.0/example-host_1.0.yml",
                     names,
                 )
                 manifest = yaml.safe_load(archive.read("deployment-bundle/manifest.yml"))
                 self.assertEqual(2, len(manifest["deployments"]))
 
+    def test_cdb_can_contain_two_versions_of_same_deployment(self):
+        with tempfile.TemporaryDirectory() as td:
+            config = Path(td) / "config"
+            shutil.copytree(EXAMPLES, config)
+            entity = config / "deployments" / "example-guest-deployment"
+            target_version = "2.0"
+            target = entity / target_version
+            shutil.copytree(entity / VERSION, target)
+            old_file = target / f"example-guest-deployment_{VERSION}.yml"
+            new_file = target / f"example-guest-deployment_{target_version}.yml"
+            old_file.rename(new_file)
+            doc = yaml.safe_load(new_file.read_text(encoding="utf-8"))
+            doc["deployment"]["config_version"] = target_version
+            new_file.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
+            bundle_path = Path(td) / "versions.zip"
+            proc = self.run_cli(
+                "cdb", f"-cr={config}",
+                "-d=example-guest-deployment@1.0", "-d=example-guest-deployment@2.0",
+                f"-ofn={bundle_path}", "-q"
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            with ZipFile(bundle_path) as archive:
+                names = set(archive.namelist())
+                self.assertIn(
+                    "deployment-bundle/deployments/example-guest-deployment/1.0/example-guest-deployment_1.0_deployment-plan.yml",
+                    names,
+                )
+                self.assertIn(
+                    "deployment-bundle/deployments/example-guest-deployment/2.0/example-guest-deployment_2.0_deployment-plan.yml",
+                    names,
+                )
+
+    def test_cdb_includes_selected_service_provider_implementation(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "provider.zip"
+            proc = self.run_cli(
+                "cdb", f"-cr={EXAMPLES}", "-d=example-cache-provider-deployment@1.0",
+                f"-ofn={bundle_path}", "-q"
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            with ZipFile(bundle_path) as archive:
+                names = set(archive.namelist())
+                self.assertIn(
+                    "deployment-bundle/deployments/example-cache-provider-deployment/1.0/service/example-artifact-cache/1.0/provider/nixos/default.nix",
+                    names,
+                )
+                plan = yaml.safe_load(archive.read(
+                    "deployment-bundle/deployments/example-cache-provider-deployment/1.0/example-cache-provider-deployment_1.0_deployment-plan.yml"
+                ))
+                implementation = plan["resolved_services"]["guest_provided"]["artifact-cache"]["implementation"]
+                self.assertEqual("NIXOS", implementation["os_type"])
+                self.assertEqual("provider/nixos/", implementation["role_path"])
+
     def test_cdb_json_format_applies_to_manifest_and_plans(self):
         with tempfile.TemporaryDirectory() as td:
             bundle_path = Path(td) / "bundle.zip"
             proc = self.run_cli(
-                "cdb", f"-cr={EXAMPLES}", "-d=example-datacenter-guest-deployment",
+                "cdb", f"-cr={EXAMPLES}", "-d=example-datacenter-guest-deployment@1.0",
                 "-ofmt=json", f"-ofn={bundle_path}", "-q"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
@@ -433,13 +613,13 @@ class OrchestratorTests(unittest.TestCase):
                 plan_path = "deployment-bundle/" + manifest["deployments"][0]["deployment_plan"]
                 plan = json.loads(archive.read(plan_path))
                 self.assertEqual("json", manifest["deployment_plan_format"])
-                self.assertEqual("example-datacenter-guest-deployment", plan["deployment"])
+                self.assertEqual({"reference": "example-datacenter-guest-deployment", "reference_config_version": VERSION}, plan["deployment"])
 
     def test_cdb_xml_manifest_and_plan_match_xsds(self):
         with tempfile.TemporaryDirectory() as td:
             bundle_path = Path(td) / "bundle.zip"
             proc = self.run_cli(
-                "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment",
+                "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0",
                 "-ofmt=xml", f"-ofn={bundle_path}", "-q"
             )
             self.assertEqual(0, proc.returncode, proc.stderr)
@@ -454,7 +634,7 @@ class OrchestratorTests(unittest.TestCase):
 
     def test_cdb_rejects_duplicate_deployment_arguments(self):
         proc = self.run_cli(
-            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment", "-d=example-guest-deployment", "-q"
+            "cdb", f"-cr={EXAMPLES}", "-d=example-guest-deployment@1.0", "-d=example-guest-deployment@1.0", "-q"
         )
         self.assertEqual(2, proc.returncode)
         self.assertIn("same --deployment", proc.stderr)

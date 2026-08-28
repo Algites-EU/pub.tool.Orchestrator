@@ -8,10 +8,10 @@ guest:
     cache filesystems. It demonstrates that access is per guest/resource
     relationship rather than a property of the shared backing itself.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 os:
-  description: NixOS configuration for the cache-populating infrastructure guest.
   type: NIXOS
-  configuration_path: nixos/
 
 compute:
   description: Minimal compute requirements for the cache provider.
@@ -67,3 +67,7 @@ mountable_resources:
       mount_point: /storage/cache/gradle
 
   relations: []
+provided_services:
+  artifact-cache:
+    reference: example-artifact-cache
+    reference_config_version: '1.0'

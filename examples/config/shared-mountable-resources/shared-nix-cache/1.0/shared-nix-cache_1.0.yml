@@ -7,9 +7,13 @@ shared_mountable_resource:
     Persistent shared Nix cache filesystem. Its lifecycle is independent from
     any cache-builder or consumer guest deployment.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 storage_class: PERSISTENT
 representation: FILESYSTEM
-host: example-host
+host:
+  reference: example-host
+  reference_config_version: '1.0'
 host_storage_target: persistent-nvme
 backend: DIRECTORY
 host_mountable_resource_interface: nfs-vm

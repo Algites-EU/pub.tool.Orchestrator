@@ -1,6 +1,8 @@
 model_version: 1
-environment: example-environment
+environment:
 
+  reference: example-environment
+  reference_config_version: '1.0'
 host:
   id: example-host
   display_name: Example Host
@@ -9,6 +11,10 @@ host:
     one implicit HOST_LOCAL_STORAGE system but expose different device and
     controller dependencies; archive targets use external storage systems.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
+os:
+  type: DEBIAN
 management_endpoint:
   service_binding:
     application_protocol: SSH
@@ -110,30 +116,30 @@ storage_targets:
     storage_class: PERSISTENT
     storage_system: HOST_LOCAL_STORAGE
     impacted_devices:
-      - nvme-a
-      - nvme-b
-      - nvme-a-persistent-partition
-      - nvme-b-persistent-partition
-      - nvme-persistent-raid1
-      - nvme-persistent-vg
-      - vm-persistent-lv
+    - nvme-a
+    - nvme-b
+    - nvme-a-persistent-partition
+    - nvme-b-persistent-partition
+    - nvme-persistent-raid1
+    - nvme-persistent-vg
+    - vm-persistent-lv
     impacted_controllers: [nvme-controller]
     supported_representations:
-      - type: BLOCK
-        description: Block resources on the persistent NVMe tier.
-        supported_backends:
-          - type: QCOW2
-            description: QCOW2 images stored on the persistent filesystem.
-            directory: /srv/libvirt/PERSISTENT/qemu/images
-          - type: LVM
-            description: Raw LVs allocated directly from the persistent VG.
-            volume_group: VG_NVME_RAID1
-      - type: FILESYSTEM
-        description: Persistent host directories exported to guests.
-        supported_backends:
-          - type: DIRECTORY
-            description: Persistent share directory root.
-            directory: /srv/libvirt/PERSISTENT/share
+    - type: BLOCK
+      description: Block resources on the persistent NVMe tier.
+      supported_backends:
+      - type: QCOW2
+        description: QCOW2 images stored on the persistent filesystem.
+        directory: /srv/libvirt/PERSISTENT/qemu/images
+      - type: LVM
+        description: Raw LVs allocated directly from the persistent VG.
+        volume_group: VG_NVME_RAID1
+    - type: FILESYSTEM
+      description: Persistent host directories exported to guests.
+      supported_backends:
+      - type: DIRECTORY
+        description: Persistent share directory root.
+        directory: /srv/libvirt/PERSISTENT/share
 
   disposable-nvme:
     display_name: Disposable NVMe
@@ -144,26 +150,26 @@ storage_targets:
     storage_class: DISPOSABLE
     storage_system: HOST_LOCAL_STORAGE
     impacted_devices:
-      - nvme-a
-      - nvme-b
-      - nvme-a-disposable-partition
-      - nvme-b-disposable-partition
-      - nvme-disposable-raid0
-      - vm-disposable-lv
+    - nvme-a
+    - nvme-b
+    - nvme-a-disposable-partition
+    - nvme-b-disposable-partition
+    - nvme-disposable-raid0
+    - vm-disposable-lv
     impacted_controllers: [nvme-controller]
     supported_representations:
-      - type: BLOCK
-        description: Disposable guest block resources.
-        supported_backends:
-          - type: QCOW2
-            description: QCOW2 images stored on the disposable filesystem.
-            directory: /srv/libvirt/DISPOSABLE/qemu/images
-      - type: FILESYSTEM
-        description: Disposable host directories exported to guests.
-        supported_backends:
-          - type: DIRECTORY
-            description: Disposable share/cache directory root.
-            directory: /srv/libvirt/DISPOSABLE/share
+    - type: BLOCK
+      description: Disposable guest block resources.
+      supported_backends:
+      - type: QCOW2
+        description: QCOW2 images stored on the disposable filesystem.
+        directory: /srv/libvirt/DISPOSABLE/qemu/images
+    - type: FILESYSTEM
+      description: Disposable host directories exported to guests.
+      supported_backends:
+      - type: DIRECTORY
+        description: Disposable share/cache directory root.
+        directory: /srv/libvirt/DISPOSABLE/share
 
   persistent-sata:
     display_name: Persistent SATA
@@ -176,12 +182,12 @@ storage_targets:
     impacted_devices: [sata-a, sata-b, sata-persistent-raid1, sata-persistent-vg]
     impacted_controllers: [sata-controller]
     supported_representations:
-      - type: BLOCK
-        description: Persistent SATA block resources.
-        supported_backends:
-          - type: LVM
-            description: LVs allocated from the SATA persistent VG.
-            volume_group: VG_SATA_RAID1
+    - type: BLOCK
+      description: Persistent SATA block resources.
+      supported_backends:
+      - type: LVM
+        description: LVs allocated from the SATA persistent VG.
+        volume_group: VG_SATA_RAID1
 
   archive-local-nas:
     display_name: Archive Local NAS
@@ -191,12 +197,12 @@ storage_targets:
     storage_class: ARCHIVE
     storage_system: local-nas-storage
     supported_representations:
-      - type: FILESYSTEM
-        description: Archive directories backed by the local NAS mount.
-        supported_backends:
-          - type: DIRECTORY
-            description: Host-visible mount point of the local NAS archive area.
-            directory: /srv/libvirt/ARCHIVE_LOCAL/share
+    - type: FILESYSTEM
+      description: Archive directories backed by the local NAS mount.
+      supported_backends:
+      - type: DIRECTORY
+        description: Host-visible mount point of the local NAS archive area.
+        directory: /srv/libvirt/ARCHIVE_LOCAL/share
 
   archive-remote-nas:
     display_name: Archive Remote NAS
@@ -205,12 +211,12 @@ storage_targets:
     storage_class: ARCHIVE
     storage_system: remote-backup-storage
     supported_representations:
-      - type: FILESYSTEM
-        description: Remote off-site archive directories.
-        supported_backends:
-          - type: DIRECTORY
-            description: Host-visible mount point of the remote backup storage.
-            directory: /srv/libvirt/ARCHIVE_REMOTE/share
+    - type: FILESYSTEM
+      description: Remote off-site archive directories.
+      supported_backends:
+      - type: DIRECTORY
+        description: Host-visible mount point of the remote backup storage.
+        directory: /srv/libvirt/ARCHIVE_REMOTE/share
 
 networks:
   vm:
@@ -253,6 +259,12 @@ mountable_resource_interfaces:
 defaults:
   filesystem_interface_by_guest_os:
     NIXOS: nfs-vm
+    DEBIAN: nfs-vm
     LINUX: nfs-vm
     WINDOWS: samba-vm
     MACOS: samba-vm
+
+consumed_services:
+  artifact-cache:
+    reference: example-artifact-cache
+    reference_config_version: '1.0'

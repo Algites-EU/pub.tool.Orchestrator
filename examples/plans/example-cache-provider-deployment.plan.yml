@@ -1,11 +1,20 @@
 model_version: 1
-deployment: example-cache-provider-deployment
-guest: example-cache-provider
-host: example-host
-environment: example-environment
+deployment:
+  reference: example-cache-provider-deployment
+  reference_config_version: '1.0'
+guest:
+  reference: example-cache-provider
+  reference_config_version: '1.0'
+host:
+  reference: example-host
+  reference_config_version: '1.0'
+environment:
+  reference: example-environment
+  reference_config_version: '1.0'
 resolved_os:
   type: NIXOS
-  configuration_path: nixos/
+resolved_host_os:
+  type: DEBIAN
 resolved_compute:
   cpu: 2
   memory: 2GiB
@@ -21,6 +30,27 @@ resolved_management_endpoint:
     transport_protocol: TCP
     port: 22
   address: 172.27.122.40
+resolved_services:
+  guest_consumed: {}
+  guest_provided:
+    artifact-cache:
+      service_configuration:
+        reference: example-artifact-cache
+        reference_config_version: '1.0'
+      implementation:
+        os_type: NIXOS
+        role_path: provider/nixos/
+        common_path: common/nixos/
+  host_consumed:
+    artifact-cache:
+      service_configuration:
+        reference: example-artifact-cache
+        reference_config_version: '1.0'
+      implementation:
+        os_type: DEBIAN
+        role_path: consumer/debian/
+        common_path: common/debian/
+  host_provided: {}
 resolved_mountable_resources:
   system-root:
     display_name: System Root
@@ -51,7 +81,9 @@ resolved_mountable_resources:
     backend:
       type: DIRECTORY
       path: /srv/libvirt/PERSISTENT/share/shared/shared-nix-cache
-    shared_mountable_resource: shared-nix-cache
+    shared_mountable_resource:
+      reference: shared-nix-cache
+      reference_config_version: '1.0'
     interface:
       provider: nfs-vm
       type: NFS
@@ -71,7 +103,9 @@ resolved_mountable_resources:
     backend:
       type: DIRECTORY
       path: /srv/libvirt/DISPOSABLE/share/shared/shared-gradle-cache
-    shared_mountable_resource: shared-gradle-cache
+    shared_mountable_resource:
+      reference: shared-gradle-cache
+      reference_config_version: '1.0'
     interface:
       provider: nfs-vm
       type: NFS

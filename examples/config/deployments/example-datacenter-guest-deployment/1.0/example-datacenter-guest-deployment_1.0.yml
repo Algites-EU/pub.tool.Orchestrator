@@ -7,9 +7,15 @@ deployment:
     Demonstrates a guest on example-secondary-host with local disposable root
     storage and external SAN-backed persistent data.
 
-guest: example-datacenter-guest
-host: example-secondary-host
+  config_version: '1.0'
+  config_version_state: RELEASED
+guest:
+  reference: example-datacenter-guest
+  reference_config_version: '1.0'
+host:
 
+  reference: example-secondary-host
+  reference_config_version: '1.0'
 compute:
   description: Concrete compute allocation.
   cpu: 2

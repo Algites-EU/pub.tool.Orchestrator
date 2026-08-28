@@ -7,10 +7,10 @@ guest:
     Smaller demonstration guest showing local disposable root storage together
     with persistent data on an external shared SAN.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
 os:
-  description: NixOS configuration for the datacenter example guest.
   type: NIXOS
-  configuration_path: nixos/
 
 compute:
   description: Compute defaults for the datacenter guest.

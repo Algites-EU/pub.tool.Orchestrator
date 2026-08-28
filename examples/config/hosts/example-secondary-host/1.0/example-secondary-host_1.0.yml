@@ -1,6 +1,8 @@
 model_version: 1
-environment: example-environment
+environment:
 
+  reference: example-environment
+  reference_config_version: '1.0'
 host:
   id: example-secondary-host
   display_name: Example Secondary Host
@@ -8,6 +10,10 @@ host:
     Datacenter deployment host demonstrating implicit host-local storage together
     with a persistent external SAN storage system.
 
+  config_version: '1.0'
+  config_version_state: RELEASED
+os:
+  type: DEBIAN
 management_endpoint:
   service_binding:
     application_protocol: SSH
@@ -44,12 +50,12 @@ storage_targets:
     impacted_devices: [local-ssd]
     impacted_controllers: [local-storage-controller]
     supported_representations:
-      - type: BLOCK
-        description: Disposable local guest disks.
-        supported_backends:
-          - type: QCOW2
-            description: QCOW2 image directory on local SSD.
-            directory: /srv/libvirt/DISPOSABLE/qemu/images
+    - type: BLOCK
+      description: Disposable local guest disks.
+      supported_backends:
+      - type: QCOW2
+        description: QCOW2 image directory on local SSD.
+        directory: /srv/libvirt/DISPOSABLE/qemu/images
   san-persistent:
     display_name: SAN Persistent
     description: Persistent storage allocated from the shared datacenter SAN.
@@ -58,18 +64,18 @@ storage_targets:
     impacted_devices: [san-lun]
     impacted_controllers: [san-hba]
     supported_representations:
-      - type: BLOCK
-        description: SAN-backed persistent block resources.
-        supported_backends:
-          - type: LVM
-            description: LVM volumes created on a SAN-backed VG.
-            volume_group: VG_SAN_PERSISTENT
-      - type: FILESYSTEM
-        description: SAN-backed host directories exported to guests.
-        supported_backends:
-          - type: DIRECTORY
-            description: Directory root on a SAN-backed host filesystem.
-            directory: /srv/libvirt/PERSISTENT/share
+    - type: BLOCK
+      description: SAN-backed persistent block resources.
+      supported_backends:
+      - type: LVM
+        description: LVM volumes created on a SAN-backed VG.
+        volume_group: VG_SAN_PERSISTENT
+    - type: FILESYSTEM
+      description: SAN-backed host directories exported to guests.
+      supported_backends:
+      - type: DIRECTORY
+        description: Directory root on a SAN-backed host filesystem.
+        directory: /srv/libvirt/PERSISTENT/share
 
 networks:
   vm:
@@ -99,6 +105,7 @@ mountable_resource_interfaces:
 defaults:
   filesystem_interface_by_guest_os:
     NIXOS: nfs-vm
+    DEBIAN: nfs-vm
     LINUX: nfs-vm
     WINDOWS: samba-vm
     MACOS: samba-vm

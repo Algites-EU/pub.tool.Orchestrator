@@ -1,0 +1,2 @@
+# Common Debian packages required by both roles.
+ca-certificates

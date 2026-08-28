@@ -16,6 +16,7 @@ schemas:
   deployment_plan: deployment-plan.schema.yml
   deployment_bundle_manifest: deployment-bundle-manifest.schema.yml
 
+  service_configuration: service-configuration.schema.yml
 xml_schemas:
   common: common.xsd
   deployment_environment_configuration: deployment-environment-configuration.xsd
@@ -26,3 +27,4 @@ xml_schemas:
   deployment_plan: deployment-plan.xsd
   deployment_bundle_manifest: deployment-bundle-manifest.xsd
   validation_report: validation-report.xsd
+  service_configuration: service-configuration.xsd

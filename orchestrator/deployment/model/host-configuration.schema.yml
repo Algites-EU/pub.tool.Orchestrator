@@ -10,16 +10,17 @@ description: >
 type: object
 additionalProperties: false
 required:
-  - model_version
-  - environment
-  - host
-  - management_endpoint
-  - storage_devices
-  - storage_controllers
-  - storage_targets
-  - networks
-  - mountable_resource_interfaces
-  - defaults
+- model_version
+- environment
+- host
+- os
+- management_endpoint
+- storage_devices
+- storage_controllers
+- storage_targets
+- networks
+- mountable_resource_interfaces
+- defaults
 properties:
   model_version:
     const: 1
@@ -30,13 +31,30 @@ properties:
   host:
     type: object
     additionalProperties: false
-    required: [id, display_name, description]
+    required: [id, display_name, description, config_version, config_version_state]
     properties:
       id:
         $ref: "common.schema.yml#/$defs/Identifier"
         description: Host id that must exist in environment.hosts.
-      display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-      description: { $ref: "common.schema.yml#/$defs/Description" }
+      display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+      description: {$ref: "common.schema.yml#/$defs/Description"}
+      config_version:
+        $ref: common.schema.yml#/$defs/ConfigVersion
+        description: Version identifier of this configuration entity definition.
+      config_version_state:
+        $ref: common.schema.yml#/$defs/ConfigVersionState
+        description: User-defined lifecycle state of this configuration version.
+  os:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        $ref: "common.schema.yml#/$defs/OperatingSystemType"
+        description: >
+          Host operating system. The corresponding lowercase implementation
+          directory (for example debian/ or nixos/) is a framework convention
+          inside this versioned HostConfiguration package.
   management_endpoint:
     $ref: "common.schema.yml#/$defs/NetworkServiceEndpoint"
     description: >
@@ -49,15 +67,15 @@ properties:
       Registry of physical and logical storage-device layers visible to this
       host. Stable ids should be used in impacted_devices; volatile /dev/sdX
       names should not be used as configuration identity.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description, type]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
-        type: { $ref: "common.schema.yml#/$defs/HostStorageDeviceType" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
+        type: {$ref: "common.schema.yml#/$defs/HostStorageDeviceType"}
         path:
           type: string
           minLength: 1
@@ -65,36 +83,36 @@ properties:
   storage_controllers:
     type: object
     description: Registry of controller/I/O path ids referenced by impacted_controllers.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
   storage_targets:
     type: object
     minProperties: 1
     description: Concrete host storage targets available to the deployment resolver.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
-    additionalProperties: { $ref: "common.schema.yml#/$defs/HostStorageTarget" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
+    additionalProperties: {$ref: "common.schema.yml#/$defs/HostStorageTarget"}
   networks:
     type: object
     description: Host/libvirt networks to which guest logical adapters may be bound.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       type: object
       additionalProperties: false
       required: [display_name, description, bridge, mode]
       properties:
-        display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-        description: { $ref: "common.schema.yml#/$defs/Description" }
+        display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+        description: {$ref: "common.schema.yml#/$defs/Description"}
         bridge:
           type: string
           minLength: 1
           description: Host bridge/libvirt network interface name.
-        mode: { $ref: "common.schema.yml#/$defs/HostNetworkMode" }
+        mode: {$ref: "common.schema.yml#/$defs/HostNetworkMode"}
         subnet:
           type: string
           minLength: 1
@@ -119,46 +137,46 @@ properties:
       Named host-side providers capable of exposing FILESYSTEM resources. The
       resolver selects one provider; the selected provider drives both guest
       mount configuration and host service/firewall configuration.
-    propertyNames: { $ref: "common.schema.yml#/$defs/Identifier" }
+    propertyNames: {$ref: "common.schema.yml#/$defs/Identifier"}
     additionalProperties:
       oneOf:
-        - type: object
-          additionalProperties: false
-          required: [display_name, description, type, host_network, server_address]
-          properties:
-            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-            description: { $ref: "common.schema.yml#/$defs/Description" }
-            type: { const: SAMBA, description: "SMB/CIFS filesystem provider." }
-            host_network:
-              $ref: "common.schema.yml#/$defs/Identifier"
-              description: Host network on which SMB is exposed to guests.
-            server_address:
-              type: string
-              minLength: 1
-              description: Address guests use to reach the SMB server.
-        - type: object
-          additionalProperties: false
-          required: [display_name, description, type, host_network, server_address]
-          properties:
-            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-            description: { $ref: "common.schema.yml#/$defs/Description" }
-            type: { const: NFS, description: "NFS filesystem provider." }
-            host_network:
-              $ref: "common.schema.yml#/$defs/Identifier"
-              description: Host network on which NFS is exposed to guests.
-            server_address:
-              type: string
-              minLength: 1
-              description: Address guests use to reach the NFS server.
-        - type: object
-          additionalProperties: false
-          required: [display_name, description, type]
-          properties:
-            display_name: { $ref: "common.schema.yml#/$defs/DisplayName" }
-            description: { $ref: "common.schema.yml#/$defs/Description" }
-            type:
-              const: VIRTIOFS
-              description: Local virtiofs provider; no TCP/IP network is required.
+      - type: object
+        additionalProperties: false
+        required: [display_name, description, type, host_network, server_address]
+        properties:
+          display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+          description: {$ref: "common.schema.yml#/$defs/Description"}
+          type: {const: SAMBA, description: "SMB/CIFS filesystem provider."}
+          host_network:
+            $ref: "common.schema.yml#/$defs/Identifier"
+            description: Host network on which SMB is exposed to guests.
+          server_address:
+            type: string
+            minLength: 1
+            description: Address guests use to reach the SMB server.
+      - type: object
+        additionalProperties: false
+        required: [display_name, description, type, host_network, server_address]
+        properties:
+          display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+          description: {$ref: "common.schema.yml#/$defs/Description"}
+          type: {const: NFS, description: "NFS filesystem provider."}
+          host_network:
+            $ref: "common.schema.yml#/$defs/Identifier"
+            description: Host network on which NFS is exposed to guests.
+          server_address:
+            type: string
+            minLength: 1
+            description: Address guests use to reach the NFS server.
+      - type: object
+        additionalProperties: false
+        required: [display_name, description, type]
+        properties:
+          display_name: {$ref: "common.schema.yml#/$defs/DisplayName"}
+          description: {$ref: "common.schema.yml#/$defs/Description"}
+          type:
+            const: VIRTIOFS
+            description: Local virtiofs provider; no TCP/IP network is required.
   defaults:
     type: object
     additionalProperties: false
@@ -170,8 +188,17 @@ properties:
           Default named FILESYSTEM provider per guest OS when no hard guest
           requirement or deployment override is supplied.
         properties:
-          NIXOS: { $ref: "common.schema.yml#/$defs/Identifier" }
-          LINUX: { $ref: "common.schema.yml#/$defs/Identifier" }
-          WINDOWS: { $ref: "common.schema.yml#/$defs/Identifier" }
-          MACOS: { $ref: "common.schema.yml#/$defs/Identifier" }
+          NIXOS: {$ref: "common.schema.yml#/$defs/Identifier"}
+          DEBIAN: {$ref: "common.schema.yml#/$defs/Identifier"}
+          LINUX: {$ref: "common.schema.yml#/$defs/Identifier"}
+          WINDOWS: {$ref: "common.schema.yml#/$defs/Identifier"}
+          MACOS: {$ref: "common.schema.yml#/$defs/Identifier"}
         additionalProperties: false
+  consumed_services:
+    $ref: common.schema.yml#/$defs/ServiceConfigurationReferences
+    description: Named ServiceConfiguration versions consumed by this entity. Concrete provider selection is a separate 
+      deployment-level concern.
+  provided_services:
+    $ref: common.schema.yml#/$defs/ServiceConfigurationReferences
+    description: Named ServiceConfiguration versions provided by this entity. The ServiceConfiguration package supplies 
+      common/provider/consumer definition branches.
